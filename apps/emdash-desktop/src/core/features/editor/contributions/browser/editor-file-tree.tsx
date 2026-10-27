@@ -46,6 +46,7 @@ import {
   type FileTreeGitDecorations,
 } from '@core/features/editor/browser/file-tree/file-tree-git-decorations';
 import { FileContentSearchResults } from '@core/features/editor/browser/task-editor/file-content-search';
+import { FileNameSearchResults } from '@core/features/editor/browser/task-editor/file-name-search-results';
 import type { TreeMutationError } from '@core/features/editor/browser/task-editor/stores/files-store';
 import type { FilesStore } from '@core/features/editor/browser/task-editor/stores/files-store';
 import { FileIcon } from '@core/features/editor/contributions/browser/file-icon';
@@ -800,7 +801,10 @@ export const EditorFileTree = observer(function EditorFileTree() {
         description={liveActionDisabledReason ?? 'The file tree has not been observed yet.'}
       />
     ) : searchQuery && !liveActionsDisabled ? (
-      <FileContentSearchResults workspaceId={workspaceId} query={searchQuery} />
+      <>
+        <FileNameSearchResults workspaceId={workspaceId} query={searchQuery} />
+        <FileContentSearchResults workspaceId={workspaceId} query={searchQuery} />
+      </>
     ) : (
       <FileTree
         ref={treeRef}

@@ -73,6 +73,14 @@ export const commandPaletteCommand = defineCommand({
   keybinding: keybinding.settings('commandPalette', 'Mod+K'),
 });
 
+export const goToFileCommand = defineCommand({
+  id: 'app.goToFile',
+  title: 'Go to File',
+  description: 'Search files in the current task by name',
+  category: 'Navigation',
+  keybinding: keybinding.settings('goToFile', 'Mod+P'),
+});
+
 export const openInEditorCommand = defineCommand({
   id: 'app.openInEditor',
   title: 'Open in Editor',
@@ -243,6 +251,7 @@ export const WINDOW_COMMAND_DEFS = [
   navigateBackCommand,
   navigateForwardCommand,
   commandPaletteCommand,
+  goToFileCommand,
   openInEditorCommand,
   confirmCommand,
   toggleLeftSidebarCommand,

@@ -18,6 +18,8 @@ interface CommandPaletteProps {
   projectId?: string;
   taskId?: string;
   workspaceId?: string;
+  /** Prefills the input, e.g. `@files ` to open straight into file search. */
+  initialInput?: string;
 }
 
 interface InputChrome {
@@ -29,6 +31,7 @@ interface CommandPaletteViewProps {
   readonly context: PaletteContext;
   readonly providerCatalog: PaletteProviderCatalog<readonly PaletteProviderDef[]>;
   readonly onClose: () => void;
+  readonly initialInput?: string;
 }
 
 const GROUP_CLASS = cn(
@@ -100,8 +103,9 @@ export function CommandPaletteView({
   context: contextInput,
   providerCatalog,
   onClose,
+  initialInput = '',
 }: CommandPaletteViewProps) {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialInput);
   const inputRef = useRef<HTMLInputElement>(null);
   const controller = useMemo(() => new PaletteController(providerCatalog), [providerCatalog]);
   const context = useMemo(
@@ -198,7 +202,12 @@ export function CommandPaletteView({
   );
 }
 
-export function CommandPaletteModal({ projectId, taskId, workspaceId }: CommandPaletteProps) {
+export function CommandPaletteModal({
+  projectId,
+  taskId,
+  workspaceId,
+  initialInput,
+}: CommandPaletteProps) {
   const { dismiss } = useModalController('commandPaletteModal');
   const context = useMemo(
     () => ({ projectId, taskId, workspaceId }),
@@ -209,6 +218,7 @@ export function CommandPaletteModal({ projectId, taskId, workspaceId }: CommandP
       context={context}
       providerCatalog={PALETTE_PROVIDER_CATALOG}
       onClose={dismiss}
+      initialInput={initialInput}
     />
   );
 }

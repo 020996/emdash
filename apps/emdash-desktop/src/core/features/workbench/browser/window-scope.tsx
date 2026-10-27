@@ -39,6 +39,19 @@ export function WindowScope({ children }: { readonly children: ReactNode }) {
         : undefined;
   const currentTaskId = currentView === 'task' ? taskParams?.taskId : undefined;
 
+  const openCommandPalette = (initialInput?: string) => {
+    const workspaceId =
+      currentProjectId && currentTaskId
+        ? (getRegisteredTaskData(currentProjectId, currentTaskId)?.workspaceId ?? undefined)
+        : undefined;
+    void openModal('commandPaletteModal', {
+      projectId: currentProjectId,
+      taskId: currentTaskId,
+      workspaceId,
+      initialInput,
+    });
+  };
+
   const implementation = {
     'app.settings': () => ({
       execute: () => toggleSettingsView(),
@@ -89,17 +102,10 @@ export function WindowScope({ children }: { readonly children: ReactNode }) {
       execute: () => getNavigationHistory().forward(applyHistoryEntry),
     }),
     'app.commandPalette': () => ({
-      execute: () => {
-        const workspaceId =
-          currentProjectId && currentTaskId
-            ? (getRegisteredTaskData(currentProjectId, currentTaskId)?.workspaceId ?? undefined)
-            : undefined;
-        void openModal('commandPaletteModal', {
-          projectId: currentProjectId,
-          taskId: currentTaskId,
-          workspaceId,
-        });
-      },
+      execute: () => openCommandPalette(),
+    }),
+    'app.goToFile': () => ({
+      execute: () => openCommandPalette('@files '),
     }),
     'app.openInEditor': () => ({
       availability: () => (openInCommandRegistry.get() ? enabled : hidden),
