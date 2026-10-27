@@ -55,6 +55,7 @@ import { ActivityBadge } from './components/activity-badge';
 import { AutomationRunPill } from './components/automation-run-pill';
 import { IssueSelector, ProviderLogo } from './components/issue-selector/issue-selector';
 import { PreviewServerPills } from './components/preview-servers/preview-server-pills';
+import { FlutterRunControls } from './flutter/flutter-run-controls';
 
 export const TaskTitlebar = observer(function TaskTitlebar() {
   const { projectId, taskId } = useTaskViewContext();
@@ -318,6 +319,7 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
         <div className="flex items-center gap-2">
           <ActivityBadge projectId={projectId} taskId={taskId} />
           <PreviewServerPills />
+          <FlutterRunControls />
           <OpenInMenu
             path={workspace.path}
             className="h-7 bg-transparent"
