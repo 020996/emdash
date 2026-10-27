@@ -121,7 +121,14 @@ const checks: ContractCheck[] = [
     name: 'no localStorage on workbench surfaces',
     pattern: /\blocalStorage\b|useLocalStorage/,
     scope: surfaceDirs,
-    allowlist: [],
+    allowlist: [
+      {
+        path: 'core/features/tasks/browser/flutter/flutter-runner.ts',
+        reason:
+          'Remembers the last Flutter device per project, a convenience preference, not layout ' +
+          'state; losing it only reopens the device picker.',
+      },
+    ],
     rationale:
       'All layout state persists via mementos on the one hydration clock. localStorage layout ' +
       'persistence is retired; it bypasses the hydration gate and the persistence clock.',

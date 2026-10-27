@@ -42,7 +42,6 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
   rowVariant = 'underProject',
 }: SidebarTaskItemProps) {
   const { navigate } = useNavigate();
-  const openRename = useOpenModal('renameTaskModal');
   const openDeleteTask = useOpenModal('deleteTaskModal');
 
   const { currentView } = useWorkspaceSlots();
@@ -64,10 +63,6 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
   const handleArchive = () => {
     if (isActive) navigate(projectViewDef({ projectId }));
     void taskManager?.archiveTask(taskId);
-  };
-
-  const handleRename = () => {
-    void openRename({ projectId, taskId, currentName: taskName });
   };
 
   const handleDelete = () => {
@@ -105,7 +100,6 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
       branchName={branchName}
       onPin={() => void task.setPinned(true)}
       onUnpin={() => void task.setPinned(false)}
-      onRename={handleRename}
       onArchive={handleArchive}
       onReconnect={handleReconnect}
       onConvertAutomation={undefined}

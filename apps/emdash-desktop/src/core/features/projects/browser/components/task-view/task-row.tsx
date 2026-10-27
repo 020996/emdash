@@ -34,7 +34,6 @@ export const TaskRow = observer(function TaskRow({
 }) {
   const { id } = view.useItem();
   const selection = view.useSelection();
-  const openRename = useOpenModal('renameTaskModal');
   const openDeleteTask = useOpenModal('deleteTaskModal');
   const taskManager = getTaskManagerStore(task.data.projectId);
 
@@ -54,13 +53,6 @@ export const TaskRow = observer(function TaskRow({
       });
     });
   };
-  const handleRename = () => {
-    void openRename({
-      projectId: task.data.projectId,
-      taskId: task.data.id,
-      currentName: task.data.name,
-    });
-  };
   const isArchived = Boolean(task.data.archivedAt);
   const isSelected = selection.isSelected(id);
   const canPin = task.state !== 'unregistered';
@@ -77,7 +69,6 @@ export const TaskRow = observer(function TaskRow({
       branchName={branchName}
       onPin={() => void task.setPinned(true)}
       onUnpin={() => void task.setPinned(false)}
-      onRename={handleRename}
       onArchive={handleArchive}
       onRestore={handleRestore}
       onConvertAutomation={undefined}

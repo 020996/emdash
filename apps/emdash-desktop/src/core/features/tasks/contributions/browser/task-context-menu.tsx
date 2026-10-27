@@ -1,5 +1,5 @@
 import { ContextMenu, toast } from '@emdash/ui/react/primitives';
-import { Archive, Copy, MessageSquare, Pencil, Pin, PinOff, RotateCcw, Trash2 } from 'lucide-react';
+import { Archive, Copy, MessageSquare, Pin, PinOff, RotateCcw, Trash2 } from 'lucide-react';
 import React from 'react';
 
 interface TaskContextMenuProps {
@@ -11,7 +11,6 @@ interface TaskContextMenuProps {
   branchName?: string;
   onPin: () => void;
   onUnpin: () => void;
-  onRename: () => void;
   onArchive: () => void;
   onRestore?: () => void;
   onReconnect?: () => void;
@@ -28,7 +27,6 @@ export function TaskContextMenu({
   branchName,
   onPin,
   onUnpin,
-  onRename,
   onArchive,
   onRestore,
   onReconnect,
@@ -65,10 +63,6 @@ export function TaskContextMenu({
               Pin task
             </ContextMenu.Item>
           ))}
-        <ContextMenu.Item onClick={onRename}>
-          <Pencil className="size-4" />
-          Rename
-        </ContextMenu.Item>
         {onReconnect && (
           <ContextMenu.Item onClick={onReconnect}>
             <RotateCcw className="size-4" />

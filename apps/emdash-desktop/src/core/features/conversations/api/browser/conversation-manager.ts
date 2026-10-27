@@ -27,6 +27,7 @@ import {
 import { log } from '@core/primitives/logging/browser/logger';
 import { makePtySessionId } from '@core/primitives/pty/api';
 import { getConversationsClient } from './client';
+import { conversationTitleFromTerminalTitle } from './conversation-title-utils';
 
 /**
  * Supplies measured terminal dimensions for a conversation's PTY spawn.
@@ -552,6 +553,15 @@ export class ConversationManagerStore implements Disposable {
     }
   }
 
+  /** TUI agents (Claude Code) put the conversation topic in the terminal title. */
+  private applyTerminalTitle(conversationId: string, terminalTitle: string): void {
+    const title = conversationTitleFromTerminalTitle(terminalTitle);
+    if (!title || this.conversations.get(conversationId)?.data.title === title) return;
+    this.renameConversation(conversationId, title).catch((error) => {
+      log.warn('ConversationManagerStore: auto-title failed', { conversationId, error });
+    });
+  }
+
   private createSession(conversation: Conversation): PtySession {
     const handlers = makeFileLinkHandlers(conversation.projectId, conversation.taskId, {
       target: 'right',
@@ -559,10 +569,18 @@ export class ConversationManagerStore implements Disposable {
     const connector =
       conversation.type === 'acp'
         ? createNoopConnector()
-        : createTuiAgentsConnector(conversation.id, () => {
-            const state = this.hostAccess?.state;
-            return !state ? 0 : state.kind === 'ready' ? state.hostGeneration : undefined;
-          });
+        : createTuiAgentsConnector(
+            conversation.id,
+            () => {
+              const state = this.hostAccess?.state;
+              return !state ? 0 : state.kind === 'ready' ? state.hostGeneration : undefined;
+            },
+            (terminalTitle) => {
+              // ponytail: only Claude Code's title is verified to carry the topic.
+              if (conversation.providerId === 'claude')
+                this.applyTerminalTitle(conversation.id, terminalTitle);
+            }
+          );
     return new PtySession(
       makePtySessionId(conversation.projectId, conversation.taskId, conversation.id),
       undefined,
@@ -591,7 +609,8 @@ function createNoopConnector(): FrontendPtyConnector {
 
 function createTuiAgentsConnector(
   conversationId: string,
-  generation: () => number | undefined
+  generation: () => number | undefined,
+  onTitle: (title: string) => void
 ): FrontendPtyConnector {
   let logBinding: ReplicaLog | null = null;
   let clientPromise: ReturnType<typeof getConversationsClient> | null = null;
@@ -602,11 +621,13 @@ function createTuiAgentsConnector(
   return {
     async connect(terminal: Terminal) {
       const runtime = await client();
+      const titleListener = terminal.onTitleChange(onTitle);
       logBinding = new ReplicaLog(runtime.tui.output.handle({ conversationId }), {
         store: createXtermLogSink(terminal),
       });
       await logBinding.ready;
       return () => {
+        titleListener.dispose();
         void logBinding?.dispose();
         logBinding = null;
       };

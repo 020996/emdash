@@ -46,3 +46,10 @@ export function nextDefaultConversationTitle(
 
   return `${capitalizeProviderId(providerId)} (${next})`;
 }
+
+/** Topic from a TUI agent's terminal title (`◐ Fix login bug`); null for status-only titles. */
+export function conversationTitleFromTerminalTitle(raw: string): string | null {
+  const title = raw.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  if (!title || /^claude code$/i.test(title)) return null;
+  return title;
+}
