@@ -17,6 +17,11 @@ vi.mock('electron-updater', () => ({
   },
 }));
 vi.mock('@main/core/app/utils', () => ({ resolveAppVersion: async () => '1.2.5' }));
+// The lifecycle under test runs only when updates are on; the Emdash build turns them off.
+vi.mock('@core/primitives/app-identity/api/app-identity', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  AUTO_UPDATE_ENABLED: true,
+}));
 vi.mock('@main/lib/logger', () => ({
   log: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));

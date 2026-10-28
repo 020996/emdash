@@ -73,10 +73,6 @@ export function setupApplicationMenu(
                 accelerator: acceleratorFor('app.settings'),
                 click: () => emitCommand('app.settings'),
               },
-              {
-                label: 'Check for Updates\u2026',
-                click: () => desktopHostEvents.emit(undefined, { type: 'menu-check-for-updates' }),
-              },
               { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
@@ -172,15 +168,6 @@ export function setupApplicationMenu(
       role: 'help' as const,
       label: 'Help',
       submenu: [
-        ...(!isMac
-          ? [
-              {
-                label: 'Check for Updates\u2026',
-                click: () => desktopHostEvents.emit(undefined, { type: 'menu-check-for-updates' }),
-              },
-              { type: 'separator' as const },
-            ]
-          : []),
         {
           label: 'Docs',
           click: () => {

@@ -2,7 +2,6 @@ import { Button } from '@emdash/ui/react/primitives';
 import { motion, type Variants } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import IconLight from '@/assets/images/emdash/icon-light.png';
-import YTBanner from '@/assets/images/ytbanner.webp';
 import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
 import { confirmCommand } from '@core/features/workbench/contributions/commands';
 import { detectPlatformContext, resolveEffectiveChord } from '@core/primitives/keybindings/api';
@@ -87,21 +86,6 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-      <div className="absolute right-0 bottom-0 left-0 h-3/5">
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            backgroundImage: `url(${YTBanner})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center top',
-            maskImage:
-              'linear-gradient(to bottom, transparent 0%, transparent 30%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to bottom, transparent 0%, transparent 30%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%)',
-          }}
-        />
-      </div>
-
       <motion.div
         className="relative z-10 flex flex-col items-center justify-center space-y-4 p-8"
         variants={containerVariants}
@@ -109,10 +93,10 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
         animate="visible"
       >
         <motion.div
-          className="rounded-md border border-border/40 bg-white p-1.5 shadow-lg ring-1 shadow-black/5 ring-black/5"
+          className="drop-shadow-lg"
           variants={itemVariants}
         >
-          <img src={IconLight} alt="Emdash" className="h-12 w-12 rounded-sm" />
+          <img src={IconLight} alt="Emdash" className="h-16 w-16" />
         </motion.div>
 
         <motion.h1

@@ -103,13 +103,6 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     description: 'Show system banners when agents need attention or finish.',
     keywords: ['banner', 'system'],
   },
-  {
-    id: 'emdash-account',
-    label: 'Emdash Account',
-    tab: 'general',
-    description: 'Create an Emdash account to automatically connect GitHub using OAuth2.',
-    keywords: ['sign in', 'sign out', 'login', 'logout', 'oauth'],
-  },
 
   // Agents
   {
