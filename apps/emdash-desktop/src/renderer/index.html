@@ -26,10 +26,17 @@
           // sRGB approximations of the theme --background / --foreground
           // tokens, applied before any stylesheet loads so the very first
           // paint (and the boot splash) match the persisted theme.
+          if (localStorage.getItem('emdash-glass') === '1') {
+            document.documentElement.classList.add('em-glass');
+          }
+          // See-through window: no opaque paint, or the desktop never shows through.
+          var transparent = localStorage.getItem('emdash-transparent') === '1';
+          if (transparent) document.documentElement.classList.add('em-transparent');
           var isDark = effective === 'emdark';
           var style = document.documentElement.style;
-          style.backgroundColor = isDark ? '#111111' : '#fcfcfc';
-          style.setProperty('--boot-splash-bg', isDark ? '#111111' : '#fcfcfc');
+          var bg = transparent ? 'transparent' : isDark ? '#111111' : '#fcfcfc';
+          style.backgroundColor = bg;
+          style.setProperty('--boot-splash-bg', bg);
           style.setProperty('--boot-splash-fg', isDark ? '#eeeeee' : '#202020');
         } catch (_) {}
       })();

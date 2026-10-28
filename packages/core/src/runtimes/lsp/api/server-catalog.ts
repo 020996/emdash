@@ -46,6 +46,8 @@ export const languageServers: readonly LanguageServerDefinition[] = [
   },
   { id: 'go', name: 'Go', languages: [{ languageId: 'go', extensions: ['go'] }] },
   { id: 'rust', name: 'Rust', languages: [{ languageId: 'rust', extensions: ['rs'] }] },
+  { id: 'dart', name: 'Dart', languages: [{ languageId: 'dart', extensions: ['dart'] }] },
+  { id: 'php', name: 'PHP', languages: [{ languageId: 'php', extensions: ['php', 'phtml'] }] },
   {
     id: 'python',
     name: 'Python',

@@ -18,7 +18,7 @@ import { createDevPerfOperations } from '@main/host/dev-perf/controller-operatio
 import { writeRendererLogEntry } from '@main/host/file-logger';
 import { setTrayVisible } from '@main/host/tray';
 import { updateOperations } from '@main/host/updates/controller-operations';
-import { applyNativeTheme } from '@main/host/window';
+import { applyNativeTheme, setTransparentWindow } from '@main/host/window';
 import { log } from '@main/lib/logger';
 import { telemetryService } from '@main/lib/telemetry';
 import type { DatabaseBundle } from './phases/database';
@@ -124,6 +124,7 @@ export function createDesktopWireOptions(
       setBrowserSettings: setBrowserCorsRelaxationSettings,
       setTheme: applyNativeTheme,
       setTrayVisible,
+      setTransparentWindow,
     },
     telemetry: telemetryService,
     taskService,

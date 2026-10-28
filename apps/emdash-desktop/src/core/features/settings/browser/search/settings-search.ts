@@ -241,6 +241,20 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     keywords: ['icons', 'material', 'vscode-icons', 'catppuccin', 'devicon', 'appearance'],
   },
   {
+    id: 'transparent-window',
+    label: 'Transparent window',
+    tab: 'interface',
+    description: 'See the desktop blurred behind the window.',
+    keywords: ['glass', 'vibrancy', 'blur', 'translucent', 'appearance'],
+  },
+  {
+    id: 'glass-surfaces',
+    label: 'Glass surfaces',
+    tab: 'interface',
+    description: 'Frosted glass cards, buttons, toggles and menus.',
+    keywords: ['glass', 'frosted', 'blur', 'appearance'],
+  },
+  {
     id: 'default-terminal-shell',
     label: 'Default terminal shell',
     tab: 'interface',

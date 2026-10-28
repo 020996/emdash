@@ -14,8 +14,9 @@ export function TaskNameField({ state }: TaskNameFieldProps) {
         aria-label="Task name"
         bare
         autoFocus
-        value={taskName}
-        placeholder={placeholder || 'Task name...'}
+        // The generated name is a real, editable value, not a hint; clearing the field restores it.
+        value={taskName || placeholder}
+        placeholder="Task name..."
         className="px-0 text-lg!"
         onChange={(e) => handleTaskNameChange(e.target.value)}
       />

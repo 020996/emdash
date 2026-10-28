@@ -1,5 +1,5 @@
 import { SettingsCard } from '@emdash/ui/react/patterns';
-import { Select, SeparatedList, THEME_MANIFEST } from '@emdash/ui/react/primitives';
+import { Select, SeparatedList, Switch, THEME_MANIFEST } from '@emdash/ui/react/primitives';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import React from 'react';
 import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
@@ -9,11 +9,15 @@ import {
   type FileIconTheme,
   type ThemeClass,
 } from '@core/primitives/app-settings/api';
+import { detectPlatformContext } from '@core/primitives/keybindings/api';
 import { captureTelemetry } from '@core/primitives/telemetry/browser/telemetry-client';
 import { useTheme } from '@core/primitives/theme/browser';
 import { SettingRow } from './SettingRow';
 
 const SYSTEM = 'system';
+
+// Vibrancy is a macOS window effect; other platforms get an opaque window.
+const isMac = detectPlatformContext().os === 'mac';
 
 const FILE_ICON_THEME_LABELS: Record<FileIconTheme, string> = {
   devicon: 'Devicon',
@@ -120,6 +124,28 @@ const AppearanceSettingsCard: React.FC = () => {
                 ))}
               </Select.Content>
             </Select.Root>
+          }
+        />
+        {isMac && (
+          <SettingRow
+            title="Transparent window"
+            description="See the desktop blurred behind the window."
+            control={
+              <Switch
+                checked={interfaceSettings?.transparentWindow ?? false}
+                onCheckedChange={(checked) => update({ transparentWindow: checked })}
+              />
+            }
+          />
+        )}
+        <SettingRow
+          title="Glass surfaces"
+          description="Frosted glass cards, buttons, toggles and menus."
+          control={
+            <Switch
+              checked={interfaceSettings?.glassSurfaces ?? false}
+              onCheckedChange={(checked) => update({ glassSurfaces: checked })}
+            />
           }
         />
       </SeparatedList>

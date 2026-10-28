@@ -13,7 +13,8 @@
  * are applied at the composing level, not here.
  */
 
-import { style } from '@vanilla-extract/css';
+import { globalStyle, style } from '@vanilla-extract/css';
+import { GLASS, glassSurface, TRANSPARENT, transparentPopup } from './glass.css';
 import {
   kfPopupIn,
   kfPopupOut,
@@ -50,8 +51,10 @@ export const popupSurface = style([
   {
     backgroundColor: vars.surface,
     color: vars.foreground,
+    selectors: { [GLASS]: { ...glassSurface, backdropFilter: 'blur(24px) saturate(1.4)' } },
   },
 ]);
+globalStyle(`${TRANSPARENT} ${popupSurface}`, transparentPopup);
 
 /**
  * Inverted (neutral pill) tone for high-contrast popups such as tooltips —

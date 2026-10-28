@@ -28,6 +28,8 @@ export const root = style({
       borderRadius: tokenVars.radiusLg,
       border: `1px solid ${vars.surfaceBorder}`,
       backgroundColor: vars.surface,
+      // See-through window: list frames follow the theme canvas instead of stacking a surface.
+      selectors: { ':where(.em-transparent) &': { backgroundColor: 'transparent' } },
     },
   },
 });
@@ -82,6 +84,8 @@ export const groupCard = style({
       borderRadius: tokenVars.radiusLg,
       border: `1px solid ${vars.surfaceBorder}`,
       backgroundColor: vars.surface,
+      // See-through window: list frames follow the theme canvas instead of stacking a surface.
+      selectors: { ':where(.em-transparent) &': { backgroundColor: 'transparent' } },
     },
   },
 });

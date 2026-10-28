@@ -23,6 +23,8 @@ when a session is attached.
 | Bash, sh | [bash-language-server](https://github.com/bash-lsp/bash-language-server) | Node.js 20+; ShellCheck on PATH adds lint diagnostics |
 | Go | [gopls](https://go.dev/gopls/) | Go toolchain; make GOBIN or GOPATH/bin available on PATH after installing |
 | Rust | [rust-analyzer](https://rust-analyzer.github.io/book/installation.html) | Rust toolchain, Cargo and rust-src; the offered rustup command installs the analyzer and sources |
+| Dart | `dart language-server` from the [Dart SDK](https://dart.dev/get-dart) | Dart or Flutter SDK `bin` on PATH; `pubspec.yaml` marks the root |
+| PHP | [Intelephense](https://intelephense.com) | Node.js; free features (diagnostics, navigation) need no licence key |
 | Python | [Pyright](https://github.com/microsoft/pyright) | Bundled, runs with Emdash’s Node/Electron; uses the project’s Python environment |
 | C, C++ | [clangd](https://clangd.llvm.org/installation) | Project compiler flags, normally compile_commands.json; Homebrew LLVM's bin directory must be on PATH or selected explicitly |
 | JSON, JSONC | [VS Code JSON server](https://github.com/hrsh7th/vscode-langservers-extracted) | Node.js; JSONC includes .jsonc, tsconfig.json and jsconfig.json |

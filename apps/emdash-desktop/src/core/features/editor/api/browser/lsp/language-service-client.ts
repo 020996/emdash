@@ -60,12 +60,18 @@ interface BoundDocument {
   sessionId?: string;
   release?: () => Promise<void>;
 }
+interface ProjectWatch {
+  state: IObservableValue<SessionConnectionState>;
+  session: LanguageSessionClient;
+  sessionId: string;
+}
 
 /** Owns language projects and document lifetimes; callers need no session or Wire knowledge. */
 export class LanguageServiceClient {
   private readonly clientId = crypto.randomUUID();
   private readonly documents = observable.map<string, BoundDocument>({}, { deep: false });
   private readonly sessions = new Map<string, LanguageSessionClient>();
+  private readonly projects = new Set<ProjectWatch>();
   private disposed = false;
 
   constructor(
@@ -155,6 +161,7 @@ export class LanguageServiceClient {
       record.lifetime.abort();
       record.source.onDiagnostics(undefined);
     }
+    this.projects.clear();
     runInAction(() => this.documents.clear());
     await Promise.all([...this.sessions.values()].map((session) => session.dispose()));
     this.sessions.clear();
@@ -178,25 +185,7 @@ export class LanguageServiceClient {
         )
       );
       if (lifetime.signal.aborted) return;
-      const sessionId = JSON.stringify([
-        encodeResourceUri(hostFileRef(source.ref.host, root)),
-        selection.server.id,
-      ]);
-      let session = this.sessions.get(sessionId);
-      if (!session) {
-        session = new LanguageSessionClient(
-          { clientId: this.clientId, host: source.ref.host, root, serverId: selection.server.id },
-          {
-            client: this.options.client,
-            onError: this.options.onError,
-            onState: (state) => {
-              for (const other of this.documents.values())
-                if (other.sessionId === sessionId) this.update(other, state);
-            },
-          }
-        );
-        this.sessions.set(sessionId, session);
-      }
+      const { sessionId, session } = this.session(source.ref.host, root, selection.server.id);
       record.sessionId = sessionId;
       record.session = session;
       record.release = session.documents.track(encodeResourceUri(source.ref), {
@@ -234,6 +223,72 @@ export class LanguageServiceClient {
     );
   }
 
+  /**
+   * Starts the project's server without opening a document, so servers that analyse the whole
+   * workspace (Dart, rust-analyzer) report every file for the Problems view.
+   */
+  watchProject(
+    workspaceRoot: HostFileRef,
+    serverId: string
+  ): { readonly connection: SessionConnectionState; dispose(): Promise<void> } {
+    // Callers check the server's root marker at workspaceRoot, so it is the project root.
+    const { sessionId, session } = this.session(workspaceRoot.host, workspaceRoot.path, serverId);
+    const watch: ProjectWatch = {
+      state: observable.box(session.connection, { deep: false }),
+      session,
+      sessionId,
+    };
+    this.projects.add(watch);
+    return {
+      get connection() {
+        return watch.state.get();
+      },
+      dispose: async () => {
+        if (!this.projects.delete(watch)) return;
+        await this.releaseSession(sessionId, session);
+      },
+    };
+  }
+
+  private session(
+    host: HostFileRef['host'],
+    root: HostFileRef['path'],
+    serverId: string
+  ): { sessionId: string; session: LanguageSessionClient } {
+    const sessionId = JSON.stringify([encodeResourceUri(hostFileRef(host, root)), serverId]);
+    let session = this.sessions.get(sessionId);
+    if (!session) {
+      session = new LanguageSessionClient(
+        { clientId: this.clientId, host, root, serverId },
+        {
+          client: this.options.client,
+          onError: this.options.onError,
+          onState: (state) => {
+            for (const other of this.documents.values())
+              if (other.sessionId === sessionId) this.update(other, state);
+            runInAction(() => {
+              for (const watch of this.projects)
+                if (watch.sessionId === sessionId) watch.state.set(state);
+            });
+          },
+        }
+      );
+      this.sessions.set(sessionId, session);
+    }
+    return { sessionId, session };
+  }
+
+  /** Disposes a session once no document or project watch uses it. */
+  private async releaseSession(sessionId: string, session: LanguageSessionClient): Promise<void> {
+    if (
+      [...this.documents.values()].some((other) => other.session === session) ||
+      [...this.projects].some((watch) => watch.session === session)
+    )
+      return;
+    if (this.sessions.get(sessionId) === session) this.sessions.delete(sessionId);
+    await session.dispose();
+  }
+
   private async release(record: BoundDocument): Promise<void> {
     if (record.lifetime.signal.aborted) return;
     record.lifetime.abort();
@@ -244,10 +299,7 @@ export class LanguageServiceClient {
     try {
       await record.release?.();
     } finally {
-      if (![...this.documents.values()].some((other) => other.session === session)) {
-        if (this.sessions.get(sessionId) === session) this.sessions.delete(sessionId);
-        await session.dispose();
-      }
+      await this.releaseSession(sessionId, session);
     }
   }
 

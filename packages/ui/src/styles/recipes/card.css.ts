@@ -28,6 +28,7 @@ import type { RecipeVariants } from '@vanilla-extract/recipes';
 // relative path, silently degrading the exported types.
 import { vars } from '../../theme/core/contract/contract.css';
 import { tokenVars } from '../../theme/tokens.css';
+import { GLASS, glassSurface } from './glass.css';
 
 const toCamel = (s: string) => s.replace(/-([a-z0-9])/g, (_: string, c: string) => c.toUpperCase());
 const vv = vars as unknown as Record<string, string>;
@@ -50,6 +51,7 @@ export const card = recipe({
     color: vars.foreground,
     border: `1px solid ${vars.border}`,
     overflow: 'hidden',
+    selectors: { [GLASS]: glassSurface },
   },
 
   variants: {

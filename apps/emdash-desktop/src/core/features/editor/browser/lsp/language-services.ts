@@ -21,6 +21,31 @@ export function getLanguageServices(): MonacoLanguageServices | undefined {
   return instance.get();
 }
 
+/** Files the task has open in the editor, with the workspace root they resolve against. */
+export function taskLanguageRefs(taskId: string): readonly Registration[] {
+  return [...registrations].filter((registration) => registration.context.taskId === taskId);
+}
+
+/** Opens `ref` in the task's focused pane and selects `range` (go-to-definition, Problems). */
+export function openEditorLocation(
+  context: Registration['context'],
+  ref: HostFileRef,
+  range: Monaco.IRange
+): boolean {
+  if (!openFile(ref, { context, target: 'active', reveal: true })) return false;
+  const resource = getTaskComposition(
+    context.projectId,
+    context.taskId
+  )?.paneLayout.focusedPane.activeResourceOfKind<FileTabResource>('file');
+  resource?.requestSelection({
+    lineNumber: range.startLineNumber,
+    startColumn: range.startColumn,
+    endLineNumber: range.endLineNumber,
+    endColumn: range.endColumn,
+  });
+  return true;
+}
+
 export function registerLanguageContext(
   ref: HostFileRef,
   root: HostFileRef,
@@ -44,20 +69,7 @@ export function installLanguageServices(monaco: typeof Monaco): void {
   if (instance.get()) return;
   const services = new MonacoLanguageServices(monaco, {
     client: async () => (await getEditorClient()).lsp,
-    openLocation: (context, ref, range) => {
-      if (!openFile(ref, { context, target: 'active', reveal: true })) return false;
-      const resource = getTaskComposition(
-        context.projectId,
-        context.taskId
-      )?.paneLayout.focusedPane.activeResourceOfKind<FileTabResource>('file');
-      resource?.requestSelection({
-        lineNumber: range.startLineNumber,
-        startColumn: range.startColumn,
-        endLineNumber: range.endLineNumber,
-        endColumn: range.endColumn,
-      });
-      return true;
-    },
+    openLocation: openEditorLocation,
   });
   for (const registration of registrations)
     registration.release = services.registerContext(

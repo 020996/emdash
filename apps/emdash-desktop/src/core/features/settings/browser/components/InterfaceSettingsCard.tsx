@@ -15,7 +15,7 @@ const InterfaceSettingsCard: React.FC = () => {
     resetField,
   } = useAppSettingsKey('interface');
 
-  const hideContextBar = interfaceSettings?.hideContextBar ?? false;
+  const hideContextBar = interfaceSettings?.hideContextBar ?? true;
 
   return (
     <SettingsCard>

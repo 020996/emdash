@@ -1,6 +1,7 @@
 import { style } from '@vanilla-extract/css';
 import { recipe } from '@vanilla-extract/recipes';
 import type { RecipeVariants } from '@vanilla-extract/recipes';
+import { glassSurface } from '../../../styles/recipes/glass.css';
 import { vars } from '@theme/core/contract/contract.css';
 import { tokenVars } from '@theme/tokens.css';
 
@@ -11,6 +12,19 @@ export const row = recipe({
     width: '100%',
     borderBottom: `1px solid ${vars.border}`,
     transition: 'background-color 100ms',
+    selectors: {
+      // Glass surfaces: each row is its own glass card. The gap is a transparent border
+      // (background clipped inside it) so virtualized row heights still measure the full box.
+      // `.em-glass &` outranks the divider/isLast variants; hover still wins on order.
+      '.em-glass &': {
+        ...glassSurface,
+        border: '3px solid transparent',
+        borderRadius: tokenVars.radiusLg,
+        backgroundClip: 'padding-box',
+        backgroundColor: vars.surfaceBase,
+        boxShadow: `inset 0 0 0 1px ${glassSurface.borderColor}`,
+      },
+    },
   },
   variants: {
     interactive: {

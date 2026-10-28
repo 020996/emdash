@@ -88,6 +88,7 @@ describe('SettingsStore contributions', () => {
       appSettingsContract,
       createAppSettingsWireController(service, {
         setTrayVisible,
+        setTransparentWindow: vi.fn(),
         setTheme: vi.fn(),
         setKeyboardSettings: vi.fn(),
         setBrowserSettings: vi.fn(),
@@ -102,6 +103,31 @@ describe('SettingsStore contributions', () => {
       await wire.client.update({ key: 'interface', value });
       await wire.client.reset({ key: 'interface' });
       expect(setTrayVisible).toHaveBeenLastCalledWith(true);
+    } finally {
+      await wire.dispose();
+    }
+  });
+
+  it('applies window transparency through Wire interface updates', async () => {
+    rows.clear();
+    const service = new AppSettingsService(new SettingsStore(db, appSettingsContributions));
+    const setTransparentWindow = vi.fn();
+    const wire = createTestWire(
+      appSettingsContract,
+      createAppSettingsWireController(service, {
+        setTrayVisible: vi.fn(),
+        setTransparentWindow,
+        setTheme: vi.fn(),
+        setKeyboardSettings: vi.fn(),
+        setBrowserSettings: vi.fn(),
+      })
+    );
+    try {
+      const value = { ...getDefaultForKey('interface'), transparentWindow: true };
+      await wire.client.update({ key: 'interface', value });
+      expect(setTransparentWindow).toHaveBeenLastCalledWith(true);
+      await wire.client.reset({ key: 'interface' });
+      expect(setTransparentWindow).toHaveBeenLastCalledWith(false);
     } finally {
       await wire.dispose();
     }

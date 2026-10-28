@@ -132,8 +132,9 @@ export const GenericTabItem = observer(function GenericTabItem({
           }}
           title={fullTitle}
           data-tabid={tab.tabId}
+          data-active={tab.isActive || undefined}
           className={cn(
-            'group relative flex h-full cursor-pointer flex-col text-sm',
+            'em-glass-item group relative flex h-full cursor-pointer flex-col text-sm',
             tab.isActive ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
           )}
         >

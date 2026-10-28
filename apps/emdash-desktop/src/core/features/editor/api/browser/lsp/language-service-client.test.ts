@@ -152,6 +152,30 @@ describe('language service client', () => {
     expect(await b.binding.hover(position)).toEqual({ contents: 'type information' });
     expect(f.setDocumentSnapshot).toHaveBeenCalledTimes(2);
   });
+  it('starts a project server without documents and shares it with opened files', async () => {
+    const f = fixture();
+    const diagnostics = [
+      {
+        path: file('/workspace/lib/a.dart').path,
+        diagnostics: [
+          {
+            range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+            message: 'unused import',
+          },
+        ],
+      },
+    ];
+    f.state.set({ ...f.ready, diagnostics });
+    const watch = f.service.watchProject(file('/workspace'), 'dart');
+    await expect.poll(() => watch.connection.kind).toBe('connected');
+    expect(watch.connection).toMatchObject({ server: { diagnostics } });
+    expect(f.setDocumentSnapshot).not.toHaveBeenCalled();
+    const opened = f.bind('/workspace/lib/a.dart');
+    await opened.binding.hover(position);
+    expect(f.resolveProjectRoot).toHaveBeenCalledTimes(1);
+    await watch.dispose();
+    expect(await opened.binding.hover(position)).toEqual({ contents: 'type information' });
+  });
   it('isolates hosts and server types, including identical paths', async () => {
     const f = fixture();
     const bindings = [

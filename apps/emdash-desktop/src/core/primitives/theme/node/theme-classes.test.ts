@@ -4,12 +4,16 @@ import { describe, expect, it } from 'vitest';
 // This convergence test reads generated files from disk, so it lives in the
 // node surface even though the constants under test are browser code.
 import {
+  GLASS_CLASS,
+  GLASS_STORAGE_KEY,
   THEME_CLASS_DARK,
   THEME_CLASS_LIGHT,
   THEME_CLASSES,
   THEME_POLARITY_STORAGE_KEY,
   THEME_PRESET_CLASS,
   THEME_STORAGE_KEY,
+  TRANSPARENT_CLASS,
+  TRANSPARENT_STORAGE_KEY,
 } from '../browser/theme-classes';
 
 function manifestClass(id: string): string {
@@ -41,5 +45,13 @@ describe('theme class-name convergence with @emdash/theme', () => {
     const html = readFileSync(new URL('../../../../renderer/index.html', import.meta.url), 'utf8');
     expect(html).toContain(`localStorage.getItem('${THEME_POLARITY_STORAGE_KEY}')`);
     expect(html).toContain(`'${THEME_PRESET_CLASS}'`);
+  });
+
+  it('index.html pre-paint script restores the transparent window and glass classes', () => {
+    const html = readFileSync(new URL('../../../../renderer/index.html', import.meta.url), 'utf8');
+    expect(html).toContain(`localStorage.getItem('${TRANSPARENT_STORAGE_KEY}')`);
+    expect(html).toContain(`localStorage.getItem('${GLASS_STORAGE_KEY}')`);
+    expect(html).toContain(`'${TRANSPARENT_CLASS}'`);
+    expect(html).toContain(`'${GLASS_CLASS}'`);
   });
 });

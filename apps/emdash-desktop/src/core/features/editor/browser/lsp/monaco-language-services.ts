@@ -143,6 +143,10 @@ export class MonacoLanguageServices {
     };
   }
 
+  watchProject(workspaceRoot: HostFileRef, serverId: string) {
+    return this.languages.watchProject(workspaceRoot, serverId);
+  }
+
   status(ref: HostFileRef) {
     const status = this.languages.status(ref);
     if (!status) return undefined;

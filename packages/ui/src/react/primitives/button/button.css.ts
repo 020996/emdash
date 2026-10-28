@@ -9,9 +9,9 @@ export const kbdHost = style({
   selectors: {
     '&[data-variant="primary"][data-tone="neutral"]': {
       vars: {
-        '--kbd-bg': 'color-mix(in srgb, black 20%, transparent)',
+        '--kbd-bg': `color-mix(in srgb, ${vars.foreground} 10%, transparent)`,
         '--kbd-border': 'transparent',
-        '--kbd-color': `color-mix(in srgb, ${vars.primaryButtonForeground} 70%, transparent)`,
+        '--kbd-color': `color-mix(in srgb, ${vars.foreground} 70%, transparent)`,
       },
     },
     '&[data-variant="primary"][data-tone="destructive"]': {
