@@ -1,7 +1,7 @@
 import type { GitChange, GitFilePath } from '@emdash/core/runtimes/git/api';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   buildNestedVisibleRows,
   isChainExpanded,
@@ -17,9 +17,8 @@ export interface VirtualizedChangesTreeProps {
   rootPath?: string;
   onSelectChange?: (change: GitChange) => void;
   onDoubleClickChange?: (change: GitChange) => void;
-  isSelected?: (path: string) => boolean;
-  onToggleSelect?: (path: string) => void;
   onPrefetch?: (change: GitChange) => void;
+  rowActions?: (change: GitChange) => ReactNode;
   activePath?: GitFilePath;
   className?: string;
 }
@@ -31,9 +30,8 @@ export function VirtualizedChangesTree({
   rootPath,
   onSelectChange,
   onDoubleClickChange,
-  isSelected,
-  onToggleSelect,
   onPrefetch,
+  rowActions,
   activePath,
   className,
 }: VirtualizedChangesTreeProps) {
@@ -83,9 +81,8 @@ export function VirtualizedChangesTree({
               key={`${node.type}:${node.path}`}
               row={row}
               change={change}
-              isSelected={isSelected?.(change.path) ?? false}
               isActive={change.path === activePath}
-              onToggleSelect={onToggleSelect}
+              actions={rowActions?.(change)}
               onClick={() => onSelectChange?.(change)}
               onDoubleClick={() => onDoubleClickChange?.(change)}
               onMouseEnter={() => onPrefetch?.(change)}
@@ -170,9 +167,8 @@ export function DirectoryRow({
 export function FileRow({
   row,
   change,
-  isSelected,
   isActive,
-  onToggleSelect,
+  actions,
   onClick,
   onDoubleClick,
   onMouseEnter,
@@ -180,9 +176,8 @@ export function FileRow({
 }: {
   row: TreeRow;
   change: GitChange;
-  isSelected: boolean;
   isActive: boolean;
-  onToggleSelect?: (path: string) => void;
+  actions?: ReactNode;
   onClick: () => void;
   onDoubleClick: () => void;
   onMouseEnter: () => void;
@@ -214,12 +209,7 @@ export function FileRow({
       >
         {node.name}
       </span>
-      <ChangeStatusAffordance
-        change={change}
-        filename={node.name}
-        isSelected={isSelected}
-        onToggleSelect={onToggleSelect}
-      />
+      <ChangeStatusAffordance change={change} actions={actions} />
     </button>
   );
 }

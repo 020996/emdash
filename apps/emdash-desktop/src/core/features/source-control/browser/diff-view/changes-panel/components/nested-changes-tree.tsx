@@ -47,7 +47,6 @@ export function NestedChangesTree({
             key={`${node.type}:${node.path}`}
             row={row}
             change={change}
-            isSelected={false}
             isActive={change.path === activePath}
             onClick={() => onSelectChange?.(change)}
             onDoubleClick={() => onDoubleClickChange?.(change)}

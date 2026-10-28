@@ -3,7 +3,6 @@ import {
   Button,
   MicroLabel,
   Popover,
-  Separator,
   Toggle,
   ToggleGroup,
   Tooltip,
@@ -13,7 +12,6 @@ import {
   ArrowUp,
   ChevronDown,
   Clock,
-  FileDiff,
   FolderOpen,
   GitBranch,
   Pin,
@@ -46,7 +44,6 @@ import {
 import { getTaskDisplayName } from '@core/features/workbench/api/browser/task-composition-selectors';
 import { Titlebar } from '@core/features/workbench/contributions/browser/Titlebar';
 import { openExternal } from '@core/primitives/desktop-host/browser/host-client';
-import { formatDiffLineCount } from '@core/primitives/formatting/browser/format-diff-line-count';
 import { BoundShortcut } from '@core/primitives/keybindings/browser/shortcut';
 import { linkedIssueDisplayIdentifier, type LinkedIssue } from '@core/primitives/linked-issues/api';
 import { useNavigate } from '@core/primitives/navigation/browser/navigation-hooks';
@@ -128,9 +125,9 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
     isPushing,
   } = useGitActions(projectId, taskId);
 
-  const linesAdded = gitCheckout.totalLinesAdded;
-  const linesDeleted = gitCheckout.totalLinesDeleted;
-  const hasDiffStats = linesAdded > 0 || linesDeleted > 0;
+  const changedFileCount = new Set(
+    [...gitCheckout.unstagedFileChanges, ...gitCheckout.stagedFileChanges].map((c) => c.path)
+  ).size;
 
   const projectContext = asAvailableProject(getProjectStore(projectId));
 
@@ -316,106 +313,100 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
         </div>
       }
       rightSlot={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <ActivityBadge projectId={projectId} taskId={taskId} />
           <PreviewServerPills />
-          <FlutterRunControls />
-          <OpenInMenu
-            path={workspace.path}
-            className="h-7 bg-transparent"
-            borderless
-            isRemote={isRemoteProject}
-            sshConnectionId={workspace.sshConnectionId}
-          />
-          <Separator orientation="vertical" className="h-5 self-center!" />
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              <Toggle
-                size="sm"
-                icon
-                pressed={taskView.isTerminalDrawerOpen}
-                onPressedChange={() => taskView.chrome.commands.toggleTerminalDrawer()}
-              >
-                <Terminal className="size-3.5" />
-              </Toggle>
-            </Tooltip.Trigger>
-            <Tooltip.Content>
-              Toggle terminal{' '}
-              <BoundShortcut command="task.toggleTerminalDrawer" variant="keycaps" />
-            </Tooltip.Content>
-          </Tooltip.Root>
-          <Separator orientation="vertical" className="h-5 self-center!" />
-          <ToggleGroup.Root
-            value={taskView.isSidebarCollapsed ? [] : [taskView.sidebarTab]}
-            onValueChange={([tab]) => {
-              if (!tab) {
-                taskView.chrome.commands.collapseSidebar();
-              } else {
-                taskView.chrome.commands.openSidebarTab(tab as SidebarTab);
-              }
-            }}
-            className="bg-transparent"
-          >
+          {/* One shared surface so the run, open-in, terminal and sidebar toggles read as one bar. */}
+          <div className="flex items-center gap-0.5 rounded-md bg-(--em-surface) p-0.5">
+            <FlutterRunControls />
+            <OpenInMenu
+              path={workspace.path}
+              className="h-7 bg-transparent"
+              borderless
+              isRemote={isRemoteProject}
+              sshConnectionId={workspace.sshConnectionId}
+            />
             <Tooltip.Root>
-              <Tooltip.Trigger
-                render={
-                  <ToggleGroup.Item
-                    value="changes"
-                    size="sm"
-                    aria-label="Changes"
-                    className={cn('w-auto! min-w-7! gap-0', hasDiffStats && 'w-full px-2!')}
-                  >
-                    <FileDiff className="size-3.5" />
-                    <span
-                      className={cn(
-                        'overflow-hidden transition-[max-width,padding-left] duration-500 ease-in-out flex items-center tabular-nums text-xs leading-none gap-1',
-                        hasDiffStats ? 'max-w-20 pl-1' : 'max-w-0 pl-0'
-                      )}
+              <Tooltip.Trigger>
+                <Toggle
+                  size="sm"
+                  icon
+                  pressed={taskView.isTerminalDrawerOpen}
+                  onPressedChange={() => taskView.chrome.commands.toggleTerminalDrawer()}
+                >
+                  <Terminal className="size-3.5" />
+                </Toggle>
+              </Tooltip.Trigger>
+              <Tooltip.Content>
+                Toggle terminal{' '}
+                <BoundShortcut command="task.toggleTerminalDrawer" variant="keycaps" />
+              </Tooltip.Content>
+            </Tooltip.Root>
+            <ToggleGroup.Root
+              value={taskView.isSidebarCollapsed ? [] : [taskView.sidebarTab]}
+              onValueChange={([tab]) => {
+                if (!tab) {
+                  taskView.chrome.commands.collapseSidebar();
+                } else {
+                  taskView.chrome.commands.openSidebarTab(tab as SidebarTab);
+                }
+              }}
+              className="bg-transparent! p-0!"
+            >
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <ToggleGroup.Item size="sm" icon value="files" aria-label="Files">
+                      <FolderOpen className="size-3.5" />
+                    </ToggleGroup.Item>
+                  }
+                />
+                <Tooltip.Content>
+                  Files <BoundShortcut command="task.sidebarFiles" variant="keycaps" />
+                </Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <ToggleGroup.Item
+                      size="sm"
+                      icon
+                      value="conversations"
+                      aria-label="Conversations"
                     >
-                      {linesAdded > 0 && (
-                        <span className="text-foreground-diff-added">
-                          +{formatDiffLineCount(linesAdded)}
+                      <Clock className="size-3.5" />
+                    </ToggleGroup.Item>
+                  }
+                />
+                <Tooltip.Content>
+                  Conversations{' '}
+                  <BoundShortcut command="task.sidebarConversations" variant="keycaps" />
+                </Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger
+                  render={
+                    <ToggleGroup.Item
+                      value="changes"
+                      size="sm"
+                      aria-label="Changes"
+                      className="w-auto! min-w-7! gap-1 px-1.5!"
+                    >
+                      <GitBranch className="size-3.5" />
+                      {changedFileCount > 0 && (
+                        <span className="text-xs leading-none tabular-nums">
+                          {changedFileCount > 999 ? '999+' : changedFileCount}
                         </span>
                       )}
-                      {linesDeleted > 0 && (
-                        <span className="text-foreground-diff-deleted">
-                          -{formatDiffLineCount(linesDeleted)}
-                        </span>
-                      )}
-                    </span>
-                  </ToggleGroup.Item>
-                }
-              />
-              <Tooltip.Content>
-                Changes <BoundShortcut command="task.sidebarChanges" variant="keycaps" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-            <Tooltip.Root>
-              <Tooltip.Trigger
-                render={
-                  <ToggleGroup.Item size="sm" icon value="files" aria-label="Files">
-                    <FolderOpen className="size-3.5" />
-                  </ToggleGroup.Item>
-                }
-              />
-              <Tooltip.Content>
-                Files <BoundShortcut command="task.sidebarFiles" variant="keycaps" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-            <Tooltip.Root>
-              <Tooltip.Trigger
-                render={
-                  <ToggleGroup.Item size="sm" icon value="conversations" aria-label="Conversations">
-                    <Clock className="size-3.5" />
-                  </ToggleGroup.Item>
-                }
-              />
-              <Tooltip.Content>
-                Conversations{' '}
-                <BoundShortcut command="task.sidebarConversations" variant="keycaps" />
-              </Tooltip.Content>
-            </Tooltip.Root>
-          </ToggleGroup.Root>
+                    </ToggleGroup.Item>
+                  }
+                />
+                <Tooltip.Content>
+                  Changes <BoundShortcut command="task.sidebarChanges" variant="keycaps" />
+                </Tooltip.Content>
+              </Tooltip.Root>
+            </ToggleGroup.Root>
+          </div>
         </div>
       }
     />

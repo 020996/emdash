@@ -1,13 +1,10 @@
-import { Badge, Checkbox } from '@emdash/ui/react/primitives';
+import { Badge } from '@emdash/ui/react/primitives';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@core/primitives/styling/browser/cn';
-import { type SelectionState } from '../../stores/changes-view-store';
 
 interface SectionHeaderProps {
   label: string;
   count: number;
-  selectionState?: SelectionState;
-  onToggleAll?: () => void;
   actions?: React.ReactNode;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -16,13 +13,10 @@ interface SectionHeaderProps {
 export function SectionHeader({
   label,
   count,
-  selectionState,
-  onToggleAll,
   actions,
   collapsed,
   onToggleCollapsed,
 }: SectionHeaderProps) {
-  const showCheckbox = selectionState !== undefined && onToggleAll !== undefined;
   return (
     // Inert fixed-height row rendered as a direct child of the sections
     // Resizable.Group (the library ignores non-panel children for layout
@@ -42,18 +36,7 @@ export function SectionHeader({
           </span>
         </span>
       </button>
-      <div className="flex items-center gap-1.5">
-        {actions}
-        {showCheckbox && (
-          <Checkbox
-            checked={selectionState === 'all'}
-            indeterminate={selectionState === 'partial'}
-            onCheckedChange={onToggleAll}
-            aria-label={`Select all ${label.toLowerCase()}`}
-            className="mr-0.5"
-          />
-        )}
-      </div>
+      <div className="flex items-center gap-1.5">{actions}</div>
     </div>
   );
 }

@@ -35,6 +35,7 @@ const config: Configuration = {
     'node_modules/better-sqlite3/**',
     'node_modules/node-pty/**',
     'node_modules/@parcel/watcher/**',
+    'node_modules/@vscode/ripgrep*/**',
     'node_modules/typescript/**',
     'node_modules/typescript-language-server/**',
     'node_modules/pyright/**',

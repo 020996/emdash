@@ -1,11 +1,11 @@
 import { PageLayout, SettingsSection } from '@emdash/ui/react/patterns';
+import AppearanceSettingsCard from '../components/AppearanceSettingsCard';
 import FilesSettingsCard from '../components/FilesSettingsCard';
 import HiddenToolsSettingsCard from '../components/HiddenToolsSettingsCard';
 import InterfaceSettingsCard from '../components/InterfaceSettingsCard';
 import KeyboardSettingsCard from '../components/KeyboardSettingsCard';
 import SidebarMetadataSettingsCard from '../components/SidebarMetadataSettingsCard';
 import TerminalSettingsCard from '../components/TerminalSettingsCard';
-import ThemeCard from '../components/ThemeCard';
 import { TrayIconSettingsRow } from '../components/TrayIconSettingsRow';
 
 export function InterfaceSettingsPage() {
@@ -16,8 +16,8 @@ export function InterfaceSettingsPage() {
         title="Interface"
         description="Customize the appearance and behavior of the app."
       />
-      <SettingsSection title="Color mode" bare>
-        <ThemeCard />
+      <SettingsSection title="Appearance" bare>
+        <AppearanceSettingsCard />
       </SettingsSection>
       <SettingsSection title="Application icon">
         <TrayIconSettingsRow />

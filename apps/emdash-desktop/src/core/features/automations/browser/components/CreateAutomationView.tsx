@@ -13,7 +13,6 @@ import { useState } from 'react';
 import type { Automation } from '@core/primitives/automations/api';
 import { assertValidCronTrigger } from '@core/primitives/automations/api';
 import { ConfirmButton } from '@core/primitives/keybindings/browser/confirm-button';
-import { useLocalStorage } from '@core/primitives/react-hooks/browser/useLocalStorage';
 import { formatAutomationError } from '../automation-run-format';
 import type { BuiltinAutomationTemplate } from '../automation-template';
 import { emptyStateAutomationTemplates } from '../builtin-catalog';
@@ -22,8 +21,6 @@ import { useAutomationFormState } from '../useAutomationFormState';
 import { AutomationSettingsFields } from './AutomationSettingsFields';
 import { AutomationTemplateRail } from './AutomationTemplateRail';
 import { SheetHeader } from './sheet-header';
-
-const TEMPLATE_SECTION_COLLAPSED_KEY = 'emdash-automation-template-section-collapsed';
 
 export interface CreateAutomationViewProps {
   onClose: () => void;
@@ -51,10 +48,7 @@ export const CreateAutomationView = observer(function CreateAutomationView({
   const [error, setError] = useState<string | null>(null);
   const [cronError, setCronError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [templatesCollapsed, setTemplatesCollapsed] = useLocalStorage(
-    TEMPLATE_SECTION_COLLAPSED_KEY,
-    false
-  );
+  const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
 
   const create = useCreateAutomation();
   const availability = useAutomationTargetAvailability(effectiveProjectId);
@@ -119,7 +113,7 @@ export const CreateAutomationView = observer(function CreateAutomationView({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Daily Pull Request Review"
-              className="h-9 px-0 text-lg!"
+              className="h-9 px-0! text-sm!"
             />
           </Field.Root>
           <AutomationSettingsFields
@@ -142,7 +136,7 @@ export const CreateAutomationView = observer(function CreateAutomationView({
         className="border-t border-border bg-background"
       >
         {/* The whole row is the trigger; the primitive owns the trailing chevron. */}
-        <Collapsible.Trigger className="h-auto rounded-none px-4 py-3">
+        <Collapsible.Trigger className="h-auto rounded-none bg-transparent! px-4! py-3 text-sm! font-normal!">
           Use a template
         </Collapsible.Trigger>
         <Collapsible.Panel className="h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-200 ease-out">

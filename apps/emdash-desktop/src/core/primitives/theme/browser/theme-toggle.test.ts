@@ -17,4 +17,8 @@ describe('getNextTheme', () => {
   it('uses system dark when no explicit theme is selected', () => {
     expect(getNextTheme(null, 'emdark')).toBe('emlight');
   });
+
+  it('toggles a dark preset to light', () => {
+    expect(getNextTheme('emdracula', 'emlight')).toBe('emlight');
+  });
 });

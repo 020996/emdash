@@ -114,6 +114,56 @@ export const OpenInMenu: React.FC<OpenInMenuProps> = ({
     });
   }, [buttonAppId, triggerOpenIn]);
 
+  const menuContent = (
+    <DropdownMenu.Content align="end" sideOffset={6} width="content">
+      <DropdownMenu.RadioGroup value={defaultApp ?? undefined}>
+        {menuApps.map((app) => (
+          <DropdownMenu.RadioItem
+            key={app.id}
+            value={app.id}
+            onClick={() => selectAndOpenApp(app.id)}
+          >
+            {icons[app.id] && (
+              <img
+                src={icons[app.id]}
+                alt={labels[app.id] || app.label}
+                className={`h-4 w-4 rounded ${app.invertInDark ? 'emdark:invert' : ''}`}
+              />
+            )}
+            {labels[app.id] || app.label}
+          </DropdownMenu.RadioItem>
+        ))}
+      </DropdownMenu.RadioGroup>
+    </DropdownMenu.Content>
+  );
+
+  // Titlebar: one icon button that opens the app list (no separate chevron).
+  if (borderless) {
+    return (
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          className={cn(
+            'flex size-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-background-1 hover:text-foreground',
+            className
+          )}
+          aria-label={buttonAppLabel ? `Open in ${buttonAppLabel}` : 'Open in'}
+          disabled={menuApps.length === 0}
+        >
+          {buttonAppId && icons[buttonAppId] && (
+            <img
+              src={icons[buttonAppId]}
+              alt={labels[buttonAppId] || buttonAppId}
+              className={`size-3.5 rounded ${
+                getAppById(buttonAppId)?.invertInDark ? 'emdark:invert' : ''
+              }`}
+            />
+          )}
+        </DropdownMenu.Trigger>
+        {menuContent}
+      </DropdownMenu.Root>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -175,27 +225,7 @@ export const OpenInMenu: React.FC<OpenInMenuProps> = ({
           ></Tooltip.Trigger>
           <Tooltip.Content side="bottom">Select open in app</Tooltip.Content>
         </Tooltip.Root>
-        <DropdownMenu.Content align="end" sideOffset={6} width="content">
-          <DropdownMenu.RadioGroup
-            value={defaultApp ?? undefined}
-            onValueChange={(value) => {
-              if (isValidOpenInAppId(value)) selectAndOpenApp(value as OpenInAppId);
-            }}
-          >
-            {menuApps.map((app) => (
-              <DropdownMenu.RadioItem key={app.id} value={app.id}>
-                {icons[app.id] && (
-                  <img
-                    src={icons[app.id]}
-                    alt={labels[app.id] || app.label}
-                    className={`h-4 w-4 rounded ${app.invertInDark ? 'emdark:invert' : ''}`}
-                  />
-                )}
-                {labels[app.id] || app.label}
-              </DropdownMenu.RadioItem>
-            ))}
-          </DropdownMenu.RadioGroup>
-        </DropdownMenu.Content>
+        {menuContent}
       </DropdownMenu.Root>
     </div>
   );

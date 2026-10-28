@@ -16,7 +16,7 @@ export const section = style({
   gap: '0.75rem',
 });
 
-// Aligns the heading with the card's inner content (card padding is 1rem).
+// Flush with the page header so every heading shares one left edge.
 export const sectionTitle = style({
-  paddingInline: '1rem',
+  paddingInline: 0,
 });

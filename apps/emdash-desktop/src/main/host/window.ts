@@ -3,7 +3,7 @@ import { app, BrowserWindow, nativeTheme } from 'electron';
 import devIcon from '@/assets/images/emdash/emdash-dev.png?asset';
 import { desktopHostEvents } from '@core/features/workbench/node';
 import { PRODUCT_NAME } from '@core/primitives/app-identity/api/app-identity';
-import type { Theme } from '@core/primitives/app-settings/api';
+import { THEME_POLARITY, type Theme } from '@core/primitives/app-settings/api';
 import { recordWindowVisible } from '@main/bootstrap/core/boot-report';
 import { reportBootSuccessSignal } from '@main/bootstrap/core/boot-status';
 import {
@@ -26,7 +26,7 @@ let mainWindow: BrowserWindow | null = null;
 
 export function applyNativeTheme(theme: Theme): void {
   if (process.platform !== 'win32') return;
-  nativeTheme.themeSource = theme === 'emdark' ? 'dark' : theme === 'emlight' ? 'light' : 'system';
+  nativeTheme.themeSource = theme ? THEME_POLARITY[theme] : 'system';
 }
 
 export function createMainWindow(): BrowserWindow {

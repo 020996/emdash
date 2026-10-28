@@ -228,10 +228,17 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   },
   {
     id: 'color-mode',
-    label: 'Color mode',
+    label: 'Color theme',
     tab: 'interface',
     description: 'Choose how Emdash looks.',
     keywords: ['theme', 'dark mode', 'light mode', 'appearance', 'system'],
+  },
+  {
+    id: 'file-icon-theme',
+    label: 'File icon theme',
+    tab: 'interface',
+    description: 'Icons for files and folders.',
+    keywords: ['icons', 'material', 'vscode-icons', 'catppuccin', 'devicon', 'appearance'],
   },
   {
     id: 'default-terminal-shell',

@@ -49,7 +49,7 @@ export function TaskContextMenu({
 
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
+      <ContextMenu.Trigger className="w-full">{children}</ContextMenu.Trigger>
       <ContextMenu.Content>
         {canPin &&
           (isPinned ? (

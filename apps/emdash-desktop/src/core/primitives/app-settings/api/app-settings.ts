@@ -1,4 +1,5 @@
 import type { TerminalShellId } from '@emdash/core/primitives/terminal-shell/api';
+import { THEME_MANIFEST } from '@emdash/theme/manifest';
 import type { BrowserProfile, BrowserProfileSelection } from '@core/primitives/browser/api';
 import type { OpenInAppId } from '@core/primitives/open-in-apps/api/open-in-apps';
 
@@ -45,7 +46,18 @@ export type TerminalSettings = {
   defaultShell: TerminalShellId;
 };
 
-export type Theme = 'emlight' | 'emdark' | null;
+/** Theme class on `<html>` (`em<id>` from THEME_MANIFEST) → polarity. */
+export const THEME_POLARITY: Readonly<Record<string, 'light' | 'dark'>> = Object.fromEntries(
+  THEME_MANIFEST.map((entry) => [entry.selector.slice(1), entry.polarity])
+);
+
+export type ThemeClass = string;
+
+export type Theme = ThemeClass | null;
+
+export function themePolarityClass(theme: ThemeClass): 'emlight' | 'emdark' {
+  return THEME_POLARITY[theme] === 'dark' ? 'emdark' : 'emlight';
+}
 
 export type InterfaceSettings = {
   showTrayIcon: boolean;
@@ -55,7 +67,12 @@ export type InterfaceSettings = {
   showLeftSidebarPrStatus: boolean;
   showLeftSidebarTimestamps: boolean;
   hideContextBar: boolean;
+  fileIconTheme: FileIconTheme;
 };
+
+export const FILE_ICON_THEMES = ['devicon', 'material', 'vscode', 'catppuccin'] as const;
+
+export type FileIconTheme = (typeof FILE_ICON_THEMES)[number];
 
 export type ProviderCustomConfig = {
   extraArgs?: string;

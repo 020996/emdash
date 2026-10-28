@@ -9,21 +9,28 @@
         try {
           var raw = localStorage.getItem('emdash-theme');
           var pref = raw ? JSON.parse(raw) : null;
+          // Presets store their polarity class beside the theme (see theme-classes.ts).
+          var stored = localStorage.getItem('emdash-theme-polarity');
           var effective =
             pref === 'emlight' || pref === 'emdark'
               ? pref
-              : window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'emdark'
-                : 'emlight';
+              : pref && (stored === 'emlight' || stored === 'emdark')
+                ? stored
+                : window.matchMedia('(prefers-color-scheme: dark)').matches
+                  ? 'emdark'
+                  : 'emlight';
           document.documentElement.classList.add(effective);
+          if (pref && pref !== effective && effective === stored) {
+            document.documentElement.classList.add(pref, 'em-preset');
+          }
           // sRGB approximations of the theme --background / --foreground
           // tokens, applied before any stylesheet loads so the very first
           // paint (and the boot splash) match the persisted theme.
-          var dark = effective === 'emdark';
+          var isDark = effective === 'emdark';
           var style = document.documentElement.style;
-          style.backgroundColor = dark ? '#111111' : '#fcfcfc';
-          style.setProperty('--boot-splash-bg', dark ? '#111111' : '#fcfcfc');
-          style.setProperty('--boot-splash-fg', dark ? '#eeeeee' : '#202020');
+          style.backgroundColor = isDark ? '#111111' : '#fcfcfc';
+          style.setProperty('--boot-splash-bg', isDark ? '#111111' : '#fcfcfc');
+          style.setProperty('--boot-splash-fg', isDark ? '#eeeeee' : '#202020');
         } catch (_) {}
       })();
     </script>

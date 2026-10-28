@@ -1,4 +1,5 @@
 import { File, FileImage } from 'lucide-react';
+import { useIconResolver } from './file-icon-packs';
 
 /** Maps a file extension (or full filename for extensionless files) to a devicon class name. */
 const EXTENSION_MAP: Record<string, string> = {
@@ -199,7 +200,36 @@ interface FileIconProps {
   size?: number;
 }
 
+function PackIcon({ svg, size }: { svg: string; size: number }) {
+  return (
+    <span
+      className="inline-flex shrink-0"
+      style={{ width: size, height: size }}
+      aria-hidden="true"
+      // SVG markup comes from the bundled @iconify-json icon sets, not user input.
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+/** Folder icon from the active icon theme; null under devicon (the tree keeps its default). */
+export function FolderIcon({
+  name,
+  expanded = false,
+  size = 12,
+}: {
+  name: string;
+  expanded?: boolean;
+  size?: number;
+}) {
+  const svg = useIconResolver()?.(name, expanded ? 'folder-open' : 'folder');
+  return svg ? <PackIcon svg={svg} size={size} /> : null;
+}
+
 export function FileIcon({ filename, className, size = 12 }: FileIconProps) {
+  const svg = useIconResolver()?.(filename, 'file');
+  if (svg) return <PackIcon svg={svg} size={size} />;
+
   const extension = getExtension(filename);
   const deviconClass = FILENAME_MAP[filename] ?? EXTENSION_MAP[extension];
 

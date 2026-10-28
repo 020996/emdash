@@ -203,7 +203,7 @@ const NotificationSettingsCard: React.FC = () => {
                       updateNotifications({ soundFocusMode: next as 'always' | 'unfocused' })
                     }
                   >
-                    <Select.Trigger className="w-auto shrink-0 gap-2 capitalize [&>span]:line-clamp-none">
+                    <Select.Trigger className="w-auto shrink-0 gap-2 pr-0! capitalize [&>span]:line-clamp-none">
                       <Select.Value />
                     </Select.Trigger>
                     <Select.Content className="min-w-max">

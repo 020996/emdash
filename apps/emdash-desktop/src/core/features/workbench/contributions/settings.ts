@@ -1,10 +1,13 @@
 import { z } from 'zod';
 import { COMMAND_CATALOG } from '@core/manifests/shared/command-catalog';
-import type {
-  InterfaceSettings,
-  KeyboardSettings,
-  OpenInSettings,
-  Theme,
+import {
+  FILE_ICON_THEMES,
+  THEME_POLARITY,
+  type InterfaceSettings,
+  type KeyboardSettings,
+  type OpenInSettings,
+  type Theme,
+  type ThemeClass,
 } from '@core/primitives/app-settings/api';
 import { openInAppIdSchema } from '@core/primitives/open-in-apps/api/open-in-apps';
 import { defineSettingsContribution } from '@core/primitives/settings/api';
@@ -31,9 +34,15 @@ const interfaceSettingsSchema = z.object({
   showLeftSidebarPrStatus: z.boolean(),
   showLeftSidebarTimestamps: z.boolean(),
   hideContextBar: z.boolean(),
+  fileIconTheme: z.enum(FILE_ICON_THEMES).catch('devicon'),
 });
 
-const themeSchema = z.enum(['emlight', 'emdark']).nullable().catch(null).optional().default(null);
+const themeSchema = z
+  .enum(Object.keys(THEME_POLARITY) as [ThemeClass, ...ThemeClass[]])
+  .nullable()
+  .catch(null)
+  .optional()
+  .default(null);
 
 const openInSettingsSchema = z.object({
   default: openInAppIdSchema,
@@ -63,6 +72,7 @@ export const interfaceSettingsContribution = defineSettingsContribution<
     showLeftSidebarPrStatus: true,
     showLeftSidebarTimestamps: true,
     hideContextBar: false,
+    fileIconTheme: 'devicon',
   },
 });
 

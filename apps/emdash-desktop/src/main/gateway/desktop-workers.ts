@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { acpApiContract, type AcpApiContract } from '@emdash/core/runtimes/acp/api';
 import { acpWorkerSpec } from '@emdash/core/runtimes/acp/node';
 import {
@@ -70,6 +70,7 @@ import {
   type WireWorkerState,
 } from '@emdash/wire/worker';
 import { childProcessSpawner } from '@emdash/wire/worker/node';
+import { rgPath } from '@vscode/ripgrep';
 import { app } from 'electron';
 import { createAutomationCreationAdmissionController } from '@core/features/automations/node/creation-admission';
 import { automationRuntimePaths } from '@core/features/automations/node/runtime-paths';
@@ -411,6 +412,8 @@ function startDesktopWorkersWithHost(
           env: process.env,
           dependencies: { watcher, userEnv: userShellEnv },
           databasePath: resolveFileSearchDatabasePath(),
+          // Bundled ripgrep (like VS Code), so content search needs no system install.
+          ripgrepPath: rgPath.replace(`app.asar${sep}`, `app.asar.unpacked${sep}`),
         })
       );
       return await worker.ready();

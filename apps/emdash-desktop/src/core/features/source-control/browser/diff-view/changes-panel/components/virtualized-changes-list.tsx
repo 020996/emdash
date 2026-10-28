@@ -1,5 +1,6 @@
 import type { GitChange, GitFilePath } from '@emdash/core/runtimes/git/api';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import type { ReactNode } from 'react';
 import { useRef } from 'react';
 import { cn } from '@core/primitives/styling/browser/cn';
 import { ChangesListItem } from './changes-list-item';
@@ -9,9 +10,8 @@ export interface VirtualizedChangesListProps {
   rootPath?: string;
   onSelectChange?: (change: GitChange) => void;
   onDoubleClickChange?: (change: GitChange) => void;
-  isSelected?: (path: string) => boolean;
-  onToggleSelect?: (path: string) => void;
   onPrefetch?: (change: GitChange) => void;
+  rowActions?: (change: GitChange) => ReactNode;
   activePath?: GitFilePath;
   className?: string;
 }
@@ -23,9 +23,8 @@ export function VirtualizedChangesList({
   rootPath,
   onSelectChange,
   onDoubleClickChange,
-  isSelected,
-  onToggleSelect,
   onPrefetch,
+  rowActions,
   activePath,
   className,
 }: VirtualizedChangesListProps) {
@@ -50,9 +49,8 @@ export function VirtualizedChangesList({
               key={change.path}
               change={change}
               rootPath={rootPath}
-              isSelected={isSelected?.(change.path)}
               isActive={change.path === activePath}
-              onToggleSelect={onToggleSelect}
+              rowActions={rowActions}
               style={{
                 position: 'absolute',
                 top: virtualItem.start,

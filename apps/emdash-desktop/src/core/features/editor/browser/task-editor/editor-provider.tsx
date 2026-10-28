@@ -48,7 +48,7 @@ export const EditorProvider = observer(function EditorProvider({
   const taskView = useTaskComposition();
   const { editorView, paneLayout } = taskView;
   const { paneId, pane: paneTabManager } = usePaneContext();
-  const { effectiveTheme } = useTheme();
+  const { themeClass } = useTheme();
   const isActive = useIsActiveTask(taskId);
   const liveActionDisabledReason = projectAvailabilityUi.getLiveActionDisabledReason(projectId);
   const editorScopeImplementation = {
@@ -97,8 +97,8 @@ export const EditorProvider = observer(function EditorProvider({
   // When this pane's editor is created it will inherit the current theme.
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    monacoBootstrap.setTheme(effectiveTheme);
-  }, [effectiveTheme]);
+    monacoBootstrap.setTheme(themeClass);
+  }, [themeClass]);
 
   // ---------------------------------------------------------------------------
   // Editor creation — fires once on mount. Creates a Monaco editor directly

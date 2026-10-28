@@ -18,6 +18,7 @@ import {
   inspectProjectPath,
 } from '@core/features/source-control/api/browser/client';
 import { getGitRepositoryStore } from '@core/features/source-control/api/browser/stores/source-control-selectors';
+import { CommitCard } from '@core/features/source-control/browser/diff-view/changes-panel/components/commit-card';
 import { GitStatusSection } from '@core/features/source-control/browser/diff-view/changes-panel/git-status-section';
 import {
   PullRequestsSectionBody,
@@ -255,6 +256,7 @@ const ChangesPanelSections = observer(function ChangesPanelSections({
 
   return (
     <div className="flex h-full flex-col">
+      <CommitCard />
       <Resizable.Group
         orientation="vertical"
         className="min-h-0 flex-1"

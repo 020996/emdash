@@ -132,7 +132,7 @@ export function StickyDiffEditor({
   const editor = useObserver(() => editorBox.get());
   useImperativeHandle<typeof editor, typeof editor>(ref, () => editor, [editor]);
 
-  const { effectiveTheme } = useTheme();
+  const { themeClass } = useTheme();
 
   // Create editor once on mount, dispose on unmount.
   // Monaco is guaranteed ready because monacoBootstrap.init() is awaited in main.tsx.
@@ -189,8 +189,8 @@ export function StickyDiffEditor({
 
   // Sync global Monaco theme (affects all editor instances simultaneously).
   useEffect(() => {
-    monacoBootstrap.setTheme(effectiveTheme);
-  }, [effectiveTheme]);
+    monacoBootstrap.setTheme(themeClass);
+  }, [themeClass]);
 
   const originalKey = original ? sideUri(original) : null;
   const modifiedKey = modified ? sideUri(modified) : null;
