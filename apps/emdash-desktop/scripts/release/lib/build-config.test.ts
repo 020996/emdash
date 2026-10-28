@@ -6,7 +6,6 @@ import { getFileMatchers } from 'app-builder-lib/out/fileMatcher';
 import { LinuxTargetHelper } from 'app-builder-lib/out/targets/LinuxTargetHelper';
 import { AppInfo, LinuxPackager, Packager } from 'electron-builder';
 import { describe, expect, it } from 'vitest';
-import canaryConfig from '../../../electron-builder.canary.config.ts';
 import stableConfig from '../../../electron-builder.config.ts';
 import packageJson from '../../../package.json';
 import { createReleaseBuildConfig } from './build-config.ts';
@@ -16,12 +15,6 @@ const projectDir = dirname(packageFile);
 
 describe.each([
   { channel: 'stable', baseConfig: stableConfig, desktopId: 'Emdash', productName: 'Emdash' },
-  {
-    channel: 'canary',
-    baseConfig: canaryConfig,
-    desktopId: 'emdash-canary',
-    productName: 'Emdash Canary',
-  },
 ])('$channel Linux desktop identity', ({ channel, baseConfig, desktopId, productName }) => {
   it.each(['local', 'release'])('matches the %s launcher on Wayland and X11', async (mode) => {
     const versionOverride =
@@ -59,18 +52,18 @@ describe.each([
 
 describe('createReleaseBuildConfig', () => {
   it('isolates nested configuration between architecture builds', () => {
-    const original = structuredClone(canaryConfig);
-    const first = createReleaseBuildConfig(canaryConfig, packageJson.devDependencies.electron);
-    const second = createReleaseBuildConfig(canaryConfig, packageJson.devDependencies.electron);
+    const original = structuredClone(stableConfig);
+    const first = createReleaseBuildConfig(stableConfig, packageJson.devDependencies.electron);
+    const second = createReleaseBuildConfig(stableConfig, packageJson.devDependencies.electron);
 
     expect(first.files).not.toBe(second.files);
     expect(first.extraMetadata).not.toBe(second.extraMetadata);
     expect(first.linux?.desktop?.entry).not.toBe(second.linux?.desktop?.entry);
-    expect(canaryConfig).toEqual(original);
+    expect(stableConfig).toEqual(original);
   });
 });
 
-it.each([stableConfig, canaryConfig])('unpacks TypeScript and Pyright runtime assets', (config) => {
+it.each([stableConfig])('unpacks TypeScript and Pyright runtime assets', (config) => {
   expect(config.extraResources).toEqual(
     expect.arrayContaining([
       {
@@ -89,7 +82,7 @@ it.each([stableConfig, canaryConfig])('unpacks TypeScript and Pyright runtime as
   );
 });
 
-it.each([stableConfig, canaryConfig])(
+it.each([stableConfig])(
   'preserves TypeScript standard libraries using resource filters',
   async (config) => {
     const root = await mkdtemp(join(tmpdir(), 'emdash-lsp-assets-'));

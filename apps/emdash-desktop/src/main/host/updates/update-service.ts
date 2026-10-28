@@ -7,7 +7,6 @@ import _electronUpdater, {
 import { updateEvents } from '@core/features/updates/node';
 import {
   AUTO_UPDATE_ENABLED,
-  IS_CANARY,
   UPDATE_CHANNEL,
 } from '@core/primitives/app-identity/api/app-identity';
 import { resolveAppVersion } from '@main/core/app/utils';
@@ -21,7 +20,6 @@ function getAutoUpdater(): typeof _electronUpdater.autoUpdater {
   return autoUpdater;
 }
 
-const ALLOW_PRERELEASE = IS_CANARY;
 const ALLOW_DOWNGRADE = false;
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const STARTUP_DELAY_MS = 30 * 1000; // 30 seconds
@@ -99,7 +97,7 @@ export class UpdateService implements Disposable {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.autoRunAppAfterInstall = true;
-    autoUpdater.allowPrerelease = ALLOW_PRERELEASE;
+    autoUpdater.allowPrerelease = false;
     autoUpdater.allowDowngrade = ALLOW_DOWNGRADE;
     autoUpdater.requestHeaders = { 'Cache-Control': 'no-cache' };
 

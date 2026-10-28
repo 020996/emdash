@@ -6,7 +6,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Arch, Platform, build, type Configuration } from 'electron-builder';
 import { expect, it, vi } from 'vitest';
-import canaryConfig from '../../../electron-builder.canary.config.ts';
 import stableConfig from '../../../electron-builder.config.ts';
 import packageJson from '../../../package.json';
 import { createReleaseBuildConfig } from './build-config.ts';
@@ -20,7 +19,6 @@ import {
 // Release builds invoke the same verifier against the full finished desktop app.
 it.runIf(process.env.EMDASH_TEST_PACKAGED_LSP === '1').each([
   ['stable', stableConfig],
-  ['canary', canaryConfig],
 ] as const)(
   '%s packaged servers use their shipped runtime and libraries without global tools',
   async (_channel, baseConfig) => {

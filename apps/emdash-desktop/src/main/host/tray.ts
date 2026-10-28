@@ -1,11 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { app, Menu, nativeImage, Tray } from 'electron';
-import canaryIcon from '@/assets/images/emdash/emdash-canary.png?asset';
 import devIcon from '@/assets/images/emdash/emdash-dev.png?asset';
 import stableIcon from '@/assets/images/emdash/emdash.png?asset';
 import trayTemplate1x from '@/assets/images/emdash/trayTemplate.png?asset';
 import trayTemplate2x from '@/assets/images/emdash/trayTemplate@2x.png?asset';
-import { IS_CANARY, PRODUCT_NAME } from '@core/primitives/app-identity/api/app-identity';
+import { PRODUCT_NAME } from '@core/primitives/app-identity/api/app-identity';
 import { showMainWindow } from './window';
 
 let tray: Tray | null = null;
@@ -24,7 +23,7 @@ function createMacTrayIcon(): Electron.NativeImage {
 
 function createTrayIcon(): Electron.NativeImage {
   if (process.platform === 'darwin') return createMacTrayIcon();
-  const iconPath = import.meta.env.DEV ? devIcon : IS_CANARY ? canaryIcon : stableIcon;
+  const iconPath = import.meta.env.DEV ? devIcon : stableIcon;
   return nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
 }
 
