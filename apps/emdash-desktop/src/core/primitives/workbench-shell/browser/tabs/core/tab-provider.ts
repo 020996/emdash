@@ -187,6 +187,9 @@ export interface TabProvider<
   /** Named capabilities surfaced as context-menu items and keyboard commands. */
   commands?: Record<string, CommandEntry<T>>;
 
+  /** The first chip of this kind stays at the start of the tab bar, outside the horizontal scroll. */
+  pinnedInTabBar?: boolean;
+
   /** Renders the tab's chip in the tab bar. */
   TabBarItem: React.ComponentType<TabBarItemProps<T>>;
   /** Renders the drag ghost for this tab kind. */

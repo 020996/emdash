@@ -1,7 +1,7 @@
 import { exec } from 'node:child_process';
-import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { access, cp, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { extname, resolve, sep } from 'node:path';
+import { basename, extname, join, resolve, sep } from 'node:path';
 import type { HostRef } from '@emdash/core/primitives/host/api';
 import { parsePortableRelativePath, type HostFileRef } from '@emdash/core/primitives/path/api';
 import type { FsError } from '@emdash/core/runtimes/files/api';
@@ -65,6 +65,12 @@ type TerminalContextMenuEvent = {
 };
 
 type WorkspaceRuntimeAcquirer = ReturnType<typeof createDesktopWorkspaceRuntimeAcquirer>;
+
+const pathExists = (path: string) =>
+  access(path).then(
+    () => true,
+    () => false
+  );
 
 type ShowWorkspaceItemInFolderError =
   | FsError
@@ -171,6 +177,17 @@ class AppService implements Disposable {
     workspaceId: string;
     relativePath: string;
   }): Promise<Result<void, ShowWorkspaceItemInFolderError>> {
+    const resolved = await this.resolveLocalWorkspaceFile(args);
+    if (!resolved.success) return resolved;
+    shell.showItemInFolder(resolved.data);
+    return ok();
+  }
+
+  /** Native path of a local workspace item; the relative path must stay inside the workspace. */
+  async resolveLocalWorkspaceFile(args: {
+    workspaceId: string;
+    relativePath: string;
+  }): Promise<Result<string, ShowWorkspaceItemInFolderError>> {
     const acquireWorkspaceRuntime = this.acquireWorkspaceRuntime;
     if (!acquireWorkspaceRuntime) throw new Error('App service has not been initialized');
     const workspace = await acquireWorkspaceRuntime(args.workspaceId);
@@ -205,8 +222,49 @@ class AppService implements Disposable {
       path: resolveRelativePath(workspace.files.root, relativePath.data),
     });
     if (!resolved.success) return resolved;
+    return ok(nativePathFromHost(resolved.data.path));
+  }
 
-    shell.showItemInFolder(nativePathFromHost(resolved.data.path));
+  /** macOS file clipboard (what Finder copies and pastes). */
+  clipboardWriteFiles(paths: string[]): void {
+    if (process.platform !== 'darwin') return;
+    const escape = (value: string) =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const plist = `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><array>${paths
+      .map((path) => `<string>${escape(path)}</string>`)
+      .join('')}</array></plist>`;
+    clipboard.writeBuffer('NSFilenamesPboardType', Buffer.from(plist));
+  }
+
+  clipboardReadFiles(): string[] {
+    if (process.platform !== 'darwin') return [];
+    const plist = clipboard.read('NSFilenamesPboardType');
+    return [...plist.matchAll(/<string>([^<]*)<\/string>/g)].map(([, path]) =>
+      path.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    );
+  }
+
+  /** Copies OS files into a local workspace folder; a clash gets Finder's " copy" suffix. */
+  async pasteFilesIntoWorkspace(args: {
+    workspaceId: string;
+    relativeDir: string;
+    sources: string[];
+  }): Promise<Result<void, ShowWorkspaceItemInFolderError>> {
+    const dir = await this.resolveLocalWorkspaceFile({
+      workspaceId: args.workspaceId,
+      relativePath: args.relativeDir,
+    });
+    if (!dir.success) return dir;
+    for (const source of args.sources) {
+      const name = basename(source);
+      const ext = extname(name);
+      const stem = name.slice(0, name.length - ext.length);
+      let target = join(dir.data, name);
+      for (let n = 1; await pathExists(target); n++) {
+        target = join(dir.data, `${stem} copy${n > 1 ? ` ${n}` : ''}${ext}`);
+      }
+      await cp(source, target, { recursive: true, errorOnExist: true, force: false });
+    }
     return ok();
   }
 

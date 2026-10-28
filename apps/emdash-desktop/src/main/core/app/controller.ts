@@ -77,6 +77,27 @@ export const appOperations = {
       error: 'message' in result.error ? result.error.message : result.error.type,
     };
   },
+  clipboardWriteFiles: async (paths: string[]) => {
+    appService.clipboardWriteFiles(paths);
+    return { success: true };
+  },
+  clipboardReadFiles: async () => appService.clipboardReadFiles(),
+  pasteFilesIntoWorkspace: async (args: {
+    workspaceId: string;
+    relativeDir: string;
+    sources: string[];
+  }) => {
+    try {
+      const result = await appService.pasteFilesIntoWorkspace(args);
+      if (result.success) return { success: true };
+      return {
+        success: false,
+        error: 'message' in result.error ? result.error.message : result.error.type,
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  },
   clipboardWriteText: async (text: string) => {
     try {
       appService.clipboardWriteText(text);

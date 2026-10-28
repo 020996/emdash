@@ -33,4 +33,21 @@ describe('app protocol file URLs', () => {
       pathToFileURL(`${root}/assets/report #100%-資料.txt`).href
     );
   });
+
+  it('serves workspace files only through the resolver', async () => {
+    const resolve = vi.fn(async ({ relativePath }: { relativePath: string }) =>
+      relativePath === 'lib/a b.dart' ? '/work/lib/a b.dart' : null
+    );
+    setupAppProtocol('/tmp/renderer', resolve);
+    const handler = mocks.handle.mock.calls[0]?.[1] as (request: {
+      url: string;
+    }) => Promise<Response>;
+
+    await handler({ url: `${APP_ORIGIN}/__workspace-file/ws%201/lib/a%20b.dart` });
+    expect(resolve).toHaveBeenCalledWith({ workspaceId: 'ws 1', relativePath: 'lib/a b.dart' });
+    expect(mocks.fetch).toHaveBeenCalledWith(pathToFileURL('/work/lib/a b.dart').href);
+
+    const denied = await handler({ url: `${APP_ORIGIN}/__workspace-file/ws/secret.txt` });
+    expect(denied.status).toBe(404);
+  });
 });

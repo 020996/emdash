@@ -80,8 +80,10 @@ export const SidebarItemMiniButton = React.forwardRef<
 ));
 SidebarItemMiniButton.displayName = 'SidebarItemMiniButton';
 
+// 30px + 1px margins keeps the 32px row pitch (the list is virtualized at 32px) while leaving a
+// 2px gap between adjacent hover/active surfaces.
 const sidebarMenuItemClass =
-  'em-glass-item flex w-full font-normal h-8 text-foreground-tertiary-muted rounded-lg items-center hover:bg-background-tertiary-1 hover:text-foreground-tertiary gap-2 px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[active=true]:bg-background-tertiary-2 data-[active=true]:text-foreground-tertiary';
+  'em-glass-item flex w-full font-normal h-[30px] my-px text-foreground-tertiary-muted rounded-lg items-center hover:bg-background-tertiary-1 hover:text-foreground-tertiary gap-2 px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[active=true]:bg-background-tertiary-2 data-[active=true]:text-foreground-tertiary';
 
 interface SidebarMenuButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isActive?: boolean;

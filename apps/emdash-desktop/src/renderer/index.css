@@ -1719,6 +1719,11 @@
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--em-foreground) 13%, transparent);
 }
 
+/* Tabs mark the active one with their underline; the glass edge ring would be a second marker. */
+.em-glass .em-glass-flat.em-glass-item:is(:hover, [data-active='true']) {
+  box-shadow: none;
+}
+
 /* Active toggle inside the titlebar bar: the frame already tints the background, so the default
    selected surface barely shows on top of it. */
 .em-glass-frame :is([data-pressed], [aria-pressed='true']) {
@@ -1729,6 +1734,13 @@
 
 /* Modals sit on the elevated surface, which in several themes is the same color as --border, so
    field outlines vanish. A foreground-mixed edge reads on any theme and either window mode. */
+/* Sticky controls drawn over scrolling content (tab bar "+"): with a see-through window the
+   translucent surface lets the tabs underneath show through, so cover them like a popup. */
+.em-transparent .em-sticky-cover {
+  background-color: color-mix(in oklab, var(--glass-src-surface-base) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+
 .em-modal {
   --border: color-mix(in oklab, var(--em-foreground) 13%, transparent);
   /* Same color as the canvas so the modal does not float as a lighter slab. */

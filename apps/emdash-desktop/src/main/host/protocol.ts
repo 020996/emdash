@@ -23,11 +23,22 @@ export function registerAppScheme(): void {
   ]);
 }
 
-export function setupAppProtocol(rendererRoot: string): void {
+/** Resolves a local workspace item to its native path (null when it may not be served). */
+export type WorkspaceFileResolver = (args: {
+  workspaceId: string;
+  relativePath: string;
+}) => Promise<string | null>;
+
+export function setupAppProtocol(
+  rendererRoot: string,
+  resolveWorkspaceFile?: WorkspaceFileResolver
+): void {
   const root = normalize(rendererRoot);
 
   protocol.handle(APP_SCHEME, async (request) => {
     const { pathname } = new URL(request.url);
+    if (resolveWorkspaceFile && pathname.startsWith(WORKSPACE_FILE_PREFIX))
+      return serveWorkspaceFile(pathname, resolveWorkspaceFile);
     const relPath = decodeURIComponent(pathname).replace(/^\/+/, '');
     const resolved = normalize(join(root, relPath || 'index.html'));
 
@@ -41,4 +52,24 @@ export function setupAppProtocol(rendererRoot: string): void {
       return net.fetch(pathToFileURL(join(root, 'index.html')).href);
     }
   });
+}
+
+/** `/__workspace-file/<workspaceId>/<relative path>`: the file-tree drag-out (`DownloadURL`) source. */
+const WORKSPACE_FILE_PREFIX = '/__workspace-file/';
+
+async function serveWorkspaceFile(
+  pathname: string,
+  resolveWorkspaceFile: WorkspaceFileResolver
+): Promise<Response> {
+  const [workspaceId = '', ...segments] = pathname
+    .slice(WORKSPACE_FILE_PREFIX.length)
+    .split('/')
+    .map(decodeURIComponent);
+  try {
+    const path = await resolveWorkspaceFile({ workspaceId, relativePath: segments.join('/') });
+    if (!path) return new Response(null, { status: 404 });
+    return await net.fetch(pathToFileURL(path).href);
+  } catch {
+    return new Response(null, { status: 404 });
+  }
 }
