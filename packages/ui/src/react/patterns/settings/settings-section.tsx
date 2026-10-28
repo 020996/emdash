@@ -6,7 +6,7 @@ import { SettingsCard } from './settings-card';
 import * as styles from './settings.css';
 
 export interface SettingsSectionProps {
-  /** Optional section heading rendered above the card, inset to align with card content. */
+  /** Optional section heading rendered above the card, flush with the page header. */
   title?: React.ReactNode;
   /**
    * Gap between rows inside the card's `SeparatedList`.

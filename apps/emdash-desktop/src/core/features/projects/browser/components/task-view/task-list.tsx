@@ -217,7 +217,7 @@ const TaskListContent = observer(function TaskListContent({
     <view.Root>
       <CollectionView
         view={view}
-        renderRow={(task) => <TaskRow task={task} view={view} />}
+        renderRow={(task) => <TaskRow task={task} />}
         toolbar={
           <TasksToolbar
             view={view}

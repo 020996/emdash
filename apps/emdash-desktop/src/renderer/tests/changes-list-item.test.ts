@@ -3,7 +3,10 @@ import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChangesListItem } from '@core/features/source-control/browser/diff-view/changes-panel/components/changes-list-item';
+import {
+  ChangesListItem,
+  RowAction,
+} from '@core/features/source-control/browser/diff-view/changes-panel/components/changes-list-item';
 import { portablePath } from '@core/primitives/desktop-runtime/api';
 
 const change: GitChange = {
@@ -36,55 +39,35 @@ describe('ChangesListItem', () => {
     dom.window.close();
   });
 
-  it('selects via checkbox without opening the diff row', () => {
+  it('runs a row action without opening the diff row', () => {
     const onOpen = vi.fn();
-    const onToggleSelect = vi.fn();
+    const onStage = vi.fn();
 
     act(() => {
       root.render(
         React.createElement(ChangesListItem, {
           change,
           onClick: onOpen,
-          onToggleSelect,
-        })
-      );
-    });
-
-    const checkbox = container.querySelector('[aria-label="Select example.ts"]');
-    expect(checkbox).not.toBeNull();
-
-    act(() => {
-      checkbox?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-    });
-
-    expect(onToggleSelect).toHaveBeenCalledWith('src/example.ts');
-    expect(onOpen).not.toHaveBeenCalled();
-  });
-
-  it('does not trigger row pointer activation from the checkbox', () => {
-    const onOpen = vi.fn();
-
-    act(() => {
-      root.render(
-        React.createElement(ChangesListItem, {
-          change,
           onPointerDown: onOpen,
-          onToggleSelect: vi.fn(),
+          rowActions: () =>
+            React.createElement(RowAction, { title: 'Stage changes', onClick: onStage }, '+'),
         })
       );
     });
 
-    const checkbox = container.querySelector('[aria-label="Select example.ts"]');
-    expect(checkbox).not.toBeNull();
+    const action = container.querySelector('[aria-label="Stage changes"]');
+    expect(action).not.toBeNull();
 
     act(() => {
-      checkbox?.dispatchEvent(new dom.window.PointerEvent('pointerdown', { bubbles: true }));
+      action?.dispatchEvent(new dom.window.PointerEvent('pointerdown', { bubbles: true }));
+      action?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
     });
 
+    expect(onStage).toHaveBeenCalledTimes(1);
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it('opens the diff row when clicking the file row outside the checkbox', () => {
+  it('opens the diff row when clicking the file row', () => {
     const onOpen = vi.fn();
 
     act(() => {
@@ -92,7 +75,6 @@ describe('ChangesListItem', () => {
         React.createElement(ChangesListItem, {
           change,
           onClick: onOpen,
-          onToggleSelect: vi.fn(),
         })
       );
     });

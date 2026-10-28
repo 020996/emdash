@@ -1,0 +1,470 @@
+/**
+ * Preset themes ported from popular VS Code themes — pure palette data.
+ *
+ * Kept free of the generation pipeline so registry.ts (and the app) can read
+ * ids/labels/polarity cheaply; presets.theme.ts turns each entry into a
+ * ResolvedTheme at codegen time. To add a theme, add one entry here and
+ * rebuild (`pnpm run build:theme`).
+ *
+ * `neutral` runs from the editor background to the main text color; the
+ * generator interpolates the 12-step ramp between the anchors.
+ */
+
+type Hues = {
+  green: string;
+  red: string;
+  amber: string;
+  blue: string;
+  orange: string;
+  purple: string;
+};
+
+export type ThemePreset = {
+  id: string;
+  label: string;
+  polarity: 'light' | 'dark';
+  accent: string;
+  hues: Hues;
+  neutral: readonly string[];
+};
+
+export const THEME_PRESETS = [
+  // ── Dark ────────────────────────────────────────────────────────────────
+  {
+    id: 'one-dark-pro',
+    label: 'One Dark Pro',
+    polarity: 'dark',
+    accent: '#61afef',
+    hues: {
+      green: '#98c379',
+      red: '#e06c75',
+      amber: '#e5c07b',
+      blue: '#61afef',
+      orange: '#d19a66',
+      purple: '#c678dd',
+    },
+    neutral: ['#282c34', '#2c313a', '#3e4451', '#abb2bf'],
+  },
+  {
+    id: 'dracula',
+    label: 'Dracula',
+    polarity: 'dark',
+    accent: '#bd93f9',
+    hues: {
+      green: '#50fa7b',
+      red: '#ff5555',
+      amber: '#f1fa8c',
+      blue: '#8be9fd',
+      orange: '#ffb86c',
+      purple: '#ff79c6',
+    },
+    neutral: ['#282a36', '#343746', '#44475a', '#6272a4', '#f8f8f2'],
+  },
+  {
+    id: 'nord',
+    label: 'Nord',
+    polarity: 'dark',
+    accent: '#88c0d0',
+    hues: {
+      green: '#a3be8c',
+      red: '#bf616a',
+      amber: '#ebcb8b',
+      blue: '#81a1c1',
+      orange: '#d08770',
+      purple: '#b48ead',
+    },
+    neutral: ['#2e3440', '#3b4252', '#434c5e', '#4c566a', '#d8dee9', '#eceff4'],
+  },
+  {
+    id: 'github-dark',
+    label: 'GitHub Dark',
+    polarity: 'dark',
+    accent: '#58a6ff',
+    hues: {
+      green: '#3fb950',
+      red: '#f85149',
+      amber: '#d29922',
+      blue: '#58a6ff',
+      orange: '#db6d28',
+      purple: '#bc8cff',
+    },
+    neutral: ['#0d1117', '#161b22', '#21262d', '#30363d', '#c9d1d9', '#f0f6fc'],
+  },
+  {
+    id: 'monokai',
+    label: 'Monokai',
+    polarity: 'dark',
+    accent: '#a6e22e',
+    hues: {
+      green: '#a6e22e',
+      red: '#f92672',
+      amber: '#e6db74',
+      blue: '#66d9ef',
+      orange: '#fd971f',
+      purple: '#ae81ff',
+    },
+    neutral: ['#272822', '#3e3d32', '#75715e', '#f8f8f2'],
+  },
+  {
+    id: 'tokyo-night',
+    label: 'Tokyo Night',
+    polarity: 'dark',
+    accent: '#7aa2f7',
+    hues: {
+      green: '#9ece6a',
+      red: '#f7768e',
+      amber: '#e0af68',
+      blue: '#7aa2f7',
+      orange: '#ff9e64',
+      purple: '#bb9af7',
+    },
+    neutral: ['#1a1b26', '#24283b', '#414868', '#565f89', '#a9b1d6', '#c0caf5'],
+  },
+  {
+    id: 'catppuccin-mocha',
+    label: 'Catppuccin Mocha',
+    polarity: 'dark',
+    accent: '#cba6f7',
+    hues: {
+      green: '#a6e3a1',
+      red: '#f38ba8',
+      amber: '#f9e2af',
+      blue: '#89b4fa',
+      orange: '#fab387',
+      purple: '#cba6f7',
+    },
+    neutral: ['#1e1e2e', '#313244', '#585b70', '#9399b2', '#cdd6f4'],
+  },
+  {
+    id: 'catppuccin-macchiato',
+    label: 'Catppuccin Macchiato',
+    polarity: 'dark',
+    accent: '#c6a0f6',
+    hues: {
+      green: '#a6da95',
+      red: '#ed8796',
+      amber: '#eed49f',
+      blue: '#8aadf4',
+      orange: '#f5a97f',
+      purple: '#c6a0f6',
+    },
+    neutral: ['#24273a', '#363a4f', '#5b6078', '#939ab7', '#cad3f5'],
+  },
+  {
+    id: 'catppuccin-frappe',
+    label: 'Catppuccin Frappé',
+    polarity: 'dark',
+    accent: '#ca9ee6',
+    hues: {
+      green: '#a6d189',
+      red: '#e78284',
+      amber: '#e5c890',
+      blue: '#8caaee',
+      orange: '#ef9f76',
+      purple: '#ca9ee6',
+    },
+    neutral: ['#303446', '#414559', '#626880', '#949cbb', '#c6d0f5'],
+  },
+  {
+    id: 'gruvbox-dark',
+    label: 'Gruvbox Dark',
+    polarity: 'dark',
+    accent: '#fabd2f',
+    hues: {
+      green: '#b8bb26',
+      red: '#fb4934',
+      amber: '#fabd2f',
+      blue: '#83a598',
+      orange: '#fe8019',
+      purple: '#d3869b',
+    },
+    neutral: ['#282828', '#3c3836', '#665c54', '#a89984', '#ebdbb2'],
+  },
+  {
+    id: 'ayu-dark',
+    label: 'Ayu Dark',
+    polarity: 'dark',
+    accent: '#e6b450',
+    hues: {
+      green: '#aad94c',
+      red: '#f07178',
+      amber: '#e6b450',
+      blue: '#59c2ff',
+      orange: '#ff8f40',
+      purple: '#d2a6ff',
+    },
+    neutral: ['#0d1017', '#131721', '#1c212b', '#565b66', '#bfbdb6'],
+  },
+  {
+    id: 'ayu-mirage',
+    label: 'Ayu Mirage',
+    polarity: 'dark',
+    accent: '#ffcc66',
+    hues: {
+      green: '#d5ff80',
+      red: '#f28779',
+      amber: '#ffcc66',
+      blue: '#73d0ff',
+      orange: '#ffad66',
+      purple: '#dfbfff',
+    },
+    neutral: ['#1f2430', '#242936', '#3a4252', '#707a8c', '#cccac2'],
+  },
+  {
+    id: 'material-ocean',
+    label: 'Material Ocean',
+    polarity: 'dark',
+    accent: '#82aaff',
+    hues: {
+      green: '#c3e88d',
+      red: '#f07178',
+      amber: '#ffcb6b',
+      blue: '#82aaff',
+      orange: '#f78c6c',
+      purple: '#c792ea',
+    },
+    neutral: ['#0f111a', '#1a1c25', '#464b5d', '#8f93a2', '#eeffff'],
+  },
+  {
+    id: 'material-palenight',
+    label: 'Material Palenight',
+    polarity: 'dark',
+    accent: '#c792ea',
+    hues: {
+      green: '#c3e88d',
+      red: '#f07178',
+      amber: '#ffcb6b',
+      blue: '#82aaff',
+      orange: '#f78c6c',
+      purple: '#c792ea',
+    },
+    neutral: ['#292d3e', '#34324a', '#676e95', '#a6accd', '#eeffff'],
+  },
+  {
+    id: 'night-owl',
+    label: 'Night Owl',
+    polarity: 'dark',
+    accent: '#7fdbca',
+    hues: {
+      green: '#addb67',
+      red: '#ef5350',
+      amber: '#ecc48d',
+      blue: '#82aaff',
+      orange: '#f78c6c',
+      purple: '#c792ea',
+    },
+    neutral: ['#011627', '#0b2942', '#5f7e97', '#d6deeb'],
+  },
+  {
+    id: 'rose-pine',
+    label: 'Rosé Pine',
+    polarity: 'dark',
+    accent: '#c4a7e7',
+    hues: {
+      green: '#31748f',
+      red: '#eb6f92',
+      amber: '#f6c177',
+      blue: '#9ccfd8',
+      orange: '#ebbcba',
+      purple: '#c4a7e7',
+    },
+    neutral: ['#191724', '#26233a', '#6e6a86', '#908caa', '#e0def4'],
+  },
+  {
+    id: 'rose-pine-moon',
+    label: 'Rosé Pine Moon',
+    polarity: 'dark',
+    accent: '#c4a7e7',
+    hues: {
+      green: '#3e8fb0',
+      red: '#eb6f92',
+      amber: '#f6c177',
+      blue: '#9ccfd8',
+      orange: '#ea9a97',
+      purple: '#c4a7e7',
+    },
+    neutral: ['#232136', '#393552', '#6e6a86', '#908caa', '#e0def4'],
+  },
+  {
+    id: 'everforest-dark',
+    label: 'Everforest Dark',
+    polarity: 'dark',
+    accent: '#a7c080',
+    hues: {
+      green: '#a7c080',
+      red: '#e67e80',
+      amber: '#dbbc7f',
+      blue: '#7fbbb3',
+      orange: '#e69875',
+      purple: '#d699b6',
+    },
+    neutral: ['#2d353b', '#343f44', '#475258', '#859289', '#d3c6aa'],
+  },
+  {
+    id: 'kanagawa',
+    label: 'Kanagawa',
+    polarity: 'dark',
+    accent: '#7e9cd8',
+    hues: {
+      green: '#98bb6c',
+      red: '#e46876',
+      amber: '#e6c384',
+      blue: '#7e9cd8',
+      orange: '#ffa066',
+      purple: '#957fb8',
+    },
+    neutral: ['#1f1f28', '#2a2a37', '#363646', '#727169', '#dcd7ba'],
+  },
+  {
+    id: 'synthwave-84',
+    label: "Synthwave '84",
+    polarity: 'dark',
+    accent: '#ff7edb',
+    hues: {
+      green: '#72f1b8',
+      red: '#fe4450',
+      amber: '#fede5d',
+      blue: '#36f9f6',
+      orange: '#f97e72',
+      purple: '#ff7edb',
+    },
+    neutral: ['#262335', '#34294f', '#495495', '#848bbd', '#ffffff'],
+  },
+  {
+    id: 'cobalt2',
+    label: 'Cobalt2',
+    polarity: 'dark',
+    accent: '#ffc600',
+    hues: {
+      green: '#3ad900',
+      red: '#ff628c',
+      amber: '#ffc600',
+      blue: '#0088ff',
+      orange: '#ff9d00',
+      purple: '#fb94ff',
+    },
+    neutral: ['#193549', '#1f4662', '#35434d', '#0088ff', '#ffffff'],
+  },
+  {
+    id: 'horizon',
+    label: 'Horizon',
+    polarity: 'dark',
+    accent: '#e95378',
+    hues: {
+      green: '#29d398',
+      red: '#e95678',
+      amber: '#fab795',
+      blue: '#26bbd9',
+      orange: '#f09483',
+      purple: '#b877db',
+    },
+    neutral: ['#1c1e26', '#232530', '#2e303e', '#6c6f93', '#cbced0'],
+  },
+
+  // ── Light ───────────────────────────────────────────────────────────────
+  {
+    id: 'github-light',
+    label: 'GitHub Light',
+    polarity: 'light',
+    accent: '#0969da',
+    hues: {
+      green: '#1a7f37',
+      red: '#cf222e',
+      amber: '#9a6700',
+      blue: '#0969da',
+      orange: '#bc4c00',
+      purple: '#8250df',
+    },
+    neutral: ['#ffffff', '#f6f8fa', '#d0d7de', '#6e7781', '#24292f'],
+  },
+  {
+    id: 'catppuccin-latte',
+    label: 'Catppuccin Latte',
+    polarity: 'light',
+    accent: '#8839ef',
+    hues: {
+      green: '#40a02b',
+      red: '#d20f39',
+      amber: '#df8e1d',
+      blue: '#1e66f5',
+      orange: '#fe640b',
+      purple: '#8839ef',
+    },
+    neutral: ['#eff1f5', '#e6e9ef', '#ccd0da', '#9ca0b0', '#6c6f85', '#4c4f69'],
+  },
+  {
+    id: 'gruvbox-light',
+    label: 'Gruvbox Light',
+    polarity: 'light',
+    accent: '#076678',
+    hues: {
+      green: '#79740e',
+      red: '#9d0006',
+      amber: '#b57614',
+      blue: '#076678',
+      orange: '#af3a03',
+      purple: '#8f3f71',
+    },
+    neutral: ['#fbf1c7', '#ebdbb2', '#d5c4a1', '#928374', '#3c3836'],
+  },
+  {
+    id: 'ayu-light',
+    label: 'Ayu Light',
+    polarity: 'light',
+    accent: '#ffaa33',
+    hues: {
+      green: '#86b300',
+      red: '#f07171',
+      amber: '#ffaa33',
+      blue: '#399ee6',
+      orange: '#fa8d3e',
+      purple: '#a37acc',
+    },
+    neutral: ['#fcfcfc', '#f3f4f5', '#e7eaed', '#8a9199', '#5c6166'],
+  },
+  {
+    id: 'rose-pine-dawn',
+    label: 'Rosé Pine Dawn',
+    polarity: 'light',
+    accent: '#907aa9',
+    hues: {
+      green: '#286983',
+      red: '#b4637a',
+      amber: '#ea9d34',
+      blue: '#56949f',
+      orange: '#d7827e',
+      purple: '#907aa9',
+    },
+    neutral: ['#faf4ed', '#f2e9e1', '#dfdad9', '#9893a5', '#797593', '#575279'],
+  },
+  {
+    id: 'everforest-light',
+    label: 'Everforest Light',
+    polarity: 'light',
+    accent: '#8da101',
+    hues: {
+      green: '#8da101',
+      red: '#f85552',
+      amber: '#dfa000',
+      blue: '#3a94c5',
+      orange: '#f57d26',
+      purple: '#df69ba',
+    },
+    neutral: ['#fdf6e3', '#f4f0d9', '#e0dcc7', '#939f91', '#5c6a72'],
+  },
+  {
+    id: 'quiet-light',
+    label: 'Quiet Light',
+    polarity: 'light',
+    accent: '#4b83cd',
+    hues: {
+      green: '#448c27',
+      red: '#aa3731',
+      amber: '#c18401',
+      blue: '#4b83cd',
+      orange: '#ab6526',
+      purple: '#7a3e9d',
+    },
+    neutral: ['#f5f5f5', '#ebebeb', '#c4c4c4', '#aaaaaa', '#333333'],
+  },
+] as const satisfies readonly ThemePreset[];

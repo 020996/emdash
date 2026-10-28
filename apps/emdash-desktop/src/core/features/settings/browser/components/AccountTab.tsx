@@ -137,7 +137,7 @@ export function AccountTab() {
     <div className="flex flex-col gap-3">
       <div>
         <p className="text-sm font-medium text-foreground">Emdash Account</p>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-sm text-foreground-muted">
           Create an Emdash account to automatically connect GitHub using OAuth2.
         </p>
       </div>
@@ -147,6 +147,7 @@ export function AccountTab() {
       ) : (
         <Button
           type="button"
+          variant="secondary"
           className="w-fit"
           onClick={() => void handleSignIn()}
           disabled={signInMutation.isPending}

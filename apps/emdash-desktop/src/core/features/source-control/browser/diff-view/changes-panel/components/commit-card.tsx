@@ -1,4 +1,4 @@
-import { Input, SplitButton, Textarea, toast } from '@emdash/ui/react/primitives';
+import { Input, SplitButton, toast } from '@emdash/ui/react/primitives';
 import { card } from '@emdash/ui/styles/recipes/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
@@ -26,11 +26,8 @@ type CommitPhase =
   | 'pushed'
   | 'opening-pr';
 
-interface CommitCardProps {
-  autoStage?: boolean;
-}
-
-export const CommitCard = observer(function CommitCard({ autoStage = false }: CommitCardProps) {
+/** Pinned above the change sections; with nothing staged, committing stages everything. */
+export const CommitCard = observer(function CommitCard() {
   const { projectId, taskId } = useTaskViewContext();
   const workspaceId = useWorkspaceId();
   const taskView = useTaskComposition();
@@ -40,9 +37,8 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const changesView = diffView?.changesView ?? null;
   const hasPRs = changesView?.expandedSections.pullRequests ?? false;
   const [commitMessage, setCommitMessage] = useState('');
-  const [description, setDescription] = useState('');
   const [phase, setPhase] = useState<CommitPhase>('idle');
-  const fullMessage = description ? `${commitMessage}\n\n${description}` : commitMessage;
+  const autoStage = git.stagedFileChanges.length === 0;
   const isInFlight = phase !== 'idle';
 
   const openCreatePrModal = useOpenModal('createPrModal');
@@ -50,6 +46,7 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const repositoryUrl = repository?.pullRequestRepositoryUrl ?? null;
 
   if (!diffView || !changesView) return null;
+  if (autoStage && !git.unstagedFileChanges.length) return null;
 
   const branchName = getTaskGitCheckoutStore(projectId, taskId)?.branchName;
   const hasOpenPr = taskView.prStore?.pullRequests.some((p) => p.status === 'open') ?? false;
@@ -74,14 +71,13 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const doCommit = async () => {
     setPhase('committing');
     if (!(await stageAllIfNeeded())) return;
-    const result = await git.commit(fullMessage);
+    const result = await git.commit(commitMessage);
     if (!result.success) {
       toast.error(`Failed to commit changes: ${formatErrorType(result.error)} `);
       setPhase('idle');
       return;
     }
     setCommitMessage('');
-    setDescription('');
     if (!autoStage) {
       changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
     }
@@ -92,14 +88,13 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const doCommitAndPush = async () => {
     setPhase('committing');
     if (!(await stageAllIfNeeded())) return;
-    const commitResult = await git.commit(fullMessage);
+    const commitResult = await git.commit(commitMessage);
     if (!commitResult.success) {
       toast.error(`Failed to commit changes: ${formatErrorType(commitResult.error)} `);
       setPhase('idle');
       return;
     }
     setCommitMessage('');
-    setDescription('');
     if (!autoStage) {
       changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
     }
@@ -119,14 +114,13 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
   const doCommitAndCreatePr = async () => {
     setPhase('committing');
     if (!(await stageAllIfNeeded())) return;
-    const commitResult = await git.commit(fullMessage);
+    const commitResult = await git.commit(commitMessage);
     if (!commitResult.success) {
       toast.error(`Failed to commit changes: ${formatErrorType(commitResult.error)} `);
       setPhase('idle');
       return;
     }
     setCommitMessage('');
-    setDescription('');
     if (!autoStage) {
       changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
     }
@@ -169,21 +163,19 @@ export const CommitCard = observer(function CommitCard({ autoStage = false }: Co
     <div
       className={cn(
         card({ level: 'elevated-emphasis', radius: 'lg', padding: 'sm' }),
-        'mx-2 mb-2 flex shrink-0 flex-col items-center justify-between gap-2'
+        'mx-2 my-2 flex shrink-0 flex-col items-center justify-between gap-2'
       )}
     >
       <Input
-        placeholder="Commit message"
+        placeholder="Message (⌘Enter to commit)"
         className="w-full bg-background"
         value={commitMessage}
         onChange={(e) => setCommitMessage(e.target.value)}
-        disabled={isInFlight}
-      />
-      <Textarea
-        placeholder="Description"
-        className="w-full bg-background"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey) || !commitMessage.trim()) return;
+          e.preventDefault();
+          actions.find((a) => a.id === effectiveAction)?.action();
+        }}
         disabled={isInFlight}
       />
       {phase === 'idle' && (

@@ -1,5 +1,5 @@
 import { Button, DropdownMenu, Tooltip } from '@emdash/ui/react/primitives';
-import { ChevronDown, Loader2, Play, RotateCcw, Square } from 'lucide-react';
+import { Loader2, Play, RotateCcw, Square } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
 import { useTaskViewContext } from '@core/features/tasks/contributions/browser/task-view-context';
@@ -9,6 +9,7 @@ import {
   useWorkspaceId,
 } from '@core/features/workbench/api/browser/task-composition-context';
 import { log } from '@core/primitives/logging/browser/logger';
+import { cn } from '@core/primitives/styling/browser/cn';
 import { getFlutterRunner, type FlutterRunTarget } from './flutter-runner';
 
 /** Run / Stop / Hot Restart buttons for Flutter workspaces; DevTools shows up as a preview pill. */
@@ -43,12 +44,20 @@ export const FlutterRunControls = observer(function FlutterRunControls() {
   if (state === 'starting' || state === 'running') {
     return (
       <div className="flex items-center gap-1">
-        <IconButton label="Stop" onClick={() => void runner.stop()}>
-          {state === 'starting' ? (
-            <Loader2 className="size-3.5 animate-spin text-foreground-muted" />
-          ) : (
-            <Square className="size-3.5 text-foreground-destructive" />
+        <IconButton
+          label={state === 'starting' ? 'Cancel build' : 'Stop'}
+          className="group"
+          onClick={() => void runner.stop()}
+        >
+          {state === 'starting' && (
+            <Loader2 className="size-3.5 animate-spin text-foreground-muted group-hover:hidden" />
           )}
+          <Square
+            className={cn(
+              'size-3.5 text-foreground-destructive',
+              state === 'starting' && 'hidden group-hover:block'
+            )}
+          />
         </IconButton>
         <IconButton
           label="Hot Restart"
@@ -64,30 +73,21 @@ export const FlutterRunControls = observer(function FlutterRunControls() {
   const busy = state === 'busy';
   const targets = runner.targets;
   const lastDevice = runner.lastDevice;
+  // Last-used device first, so re-running stays at the top of the list.
+  const devices = targets
+    ? [...targets.devices].sort(
+        (a, b) => Number(b.id === lastDevice?.id) - Number(a.id === lastDevice?.id)
+      )
+    : [];
   return (
     <div className="flex items-center">
-      <Button
-        variant="ghost"
-        size="xs"
-        className="gap-1.5"
-        disabled={busy}
-        onClick={() =>
-          lastDevice ? run({ kind: 'device', device: lastDevice }) : openPicker(true)
-        }
-      >
-        {busy ? (
-          <Loader2 className="size-3.5 animate-spin text-foreground-muted" />
-        ) : (
-          <Play className="size-3.5" />
-        )}
-        <span className="max-w-32 truncate">{lastDevice ? lastDevice.name : 'Run'}</span>
-      </Button>
       <DropdownMenu.Root open={pickerOpen} onOpenChange={openPicker}>
         <DropdownMenu.Trigger
-          aria-label="Select a device"
-          className="flex h-6 items-center rounded-md px-1 text-foreground-muted hover:bg-background-1 hover:text-foreground"
+          aria-label="Run on a device"
+          disabled={busy}
+          className="flex size-7 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-background-1 hover:text-foreground disabled:opacity-50"
         >
-          <ChevronDown className="size-3.5" />
+          <Play className="size-3.5" />
         </DropdownMenu.Trigger>
         <DropdownMenu.Content width="content" align="end" className="min-w-56">
           {!targets ? (
@@ -97,13 +97,11 @@ export const FlutterRunControls = observer(function FlutterRunControls() {
           ) : (
             <>
               <DropdownMenu.Group>
-                <DropdownMenu.Label>
-                  {busy ? 'Devices · refreshing…' : 'Devices'}
-                </DropdownMenu.Label>
+                <DropdownMenu.Label>Devices</DropdownMenu.Label>
                 {targets.devices.length === 0 && (
                   <DropdownMenu.Label>No running devices</DropdownMenu.Label>
                 )}
-                {targets.devices.map((device) => (
+                {devices.map((device) => (
                   <DropdownMenu.Item
                     key={device.id}
                     onClick={() => run({ kind: 'device', device })}
@@ -142,11 +140,13 @@ export const FlutterRunControls = observer(function FlutterRunControls() {
 
 function IconButton({
   label,
+  className,
   disabled,
   onClick,
   children,
 }: {
   label: string;
+  className?: string;
   disabled?: boolean;
   onClick(): void;
   children: React.ReactNode;
@@ -154,7 +154,14 @@ function IconButton({
   return (
     <Tooltip.Root>
       <Tooltip.Trigger>
-        <Button variant="ghost" size="xs" aria-label={label} disabled={disabled} onClick={onClick}>
+        <Button
+          variant="ghost"
+          size="xs"
+          className={className}
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+        >
           {children}
         </Button>
       </Tooltip.Trigger>

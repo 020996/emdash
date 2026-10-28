@@ -17,3 +17,9 @@ export const THEME_CLASSES = [THEME_CLASS_LIGHT, THEME_CLASS_DARK] as const;
 
 /** localStorage key the pre-paint script reads to avoid a theme flash. */
 export const THEME_STORAGE_KEY = 'emdash-theme';
+
+/** localStorage key holding the stored theme's polarity class, read by the pre-paint script. */
+export const THEME_POLARITY_STORAGE_KEY = 'emdash-theme-polarity';
+
+/** Marks a preset theme on `<html>`; index.css remaps the base palette onto its --em-* vars. */
+export const THEME_PRESET_CLASS = 'em-preset';

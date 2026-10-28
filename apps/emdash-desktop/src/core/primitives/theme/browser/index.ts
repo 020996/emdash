@@ -2,6 +2,8 @@ export {
   THEME_CLASS_DARK,
   THEME_CLASS_LIGHT,
   THEME_CLASSES,
+  THEME_POLARITY_STORAGE_KEY,
+  THEME_PRESET_CLASS,
   THEME_STORAGE_KEY,
 } from './theme-classes';
 export {

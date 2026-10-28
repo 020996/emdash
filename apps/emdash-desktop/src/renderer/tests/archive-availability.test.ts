@@ -2,10 +2,7 @@ import { createElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TaskList } from '@core/features/projects/browser/components/task-view/task-list';
-import type {
-  ReadyTask,
-  TaskListViewModel,
-} from '@core/features/projects/browser/components/task-view/task-list-model';
+import type { ReadyTask } from '@core/features/projects/browser/components/task-view/task-list-model';
 import { TaskRow } from '@core/features/projects/browser/components/task-view/task-row';
 import { TaskScope } from '@core/features/tasks/browser/task-scope';
 import type { taskViewScope } from '@core/features/tasks/contributions/scopes';
@@ -79,6 +76,7 @@ vi.mock('@core/features/source-control/api/browser/stores/source-control-selecto
 vi.mock('@core/features/source-control/api/browser/git-action-handlers', () => ({}));
 vi.mock('@core/features/workbench/api/browser/task-composition-selectors', () => ({
   getTaskWorkspace: () => null,
+  getTaskDisplayName: () => 'Task',
 }));
 vi.mock('@core/features/workbench/contributions/browser/app-stores', () => ({
   getSidebarStore: vi.fn(),
@@ -154,13 +152,7 @@ describe('archive UI availability for provisioned tasks on an unreachable host',
         createElement(SidebarTaskItem, { projectId: 'project-1', taskId: 'task-1' })
       );
     } else {
-      const view = {
-        useItem: () => ({ id: 'task-1' }),
-        useSelection: () => ({ isSelected: () => false }),
-      } as unknown as TaskListViewModel;
-      renderToStaticMarkup(
-        createElement(TaskRow, { task: mocks.task as unknown as ReadyTask, view })
-      );
+      renderToStaticMarkup(createElement(TaskRow, { task: mocks.task as unknown as ReadyTask }));
     }
     const props = mocks.menu.mock.calls[0]![0];
     expect(props.archiveDisabledReason).toBeUndefined();

@@ -10,11 +10,18 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import type { Theme } from '@core/primitives/app-settings/api';
+import {
+  THEME_POLARITY,
+  themePolarityClass,
+  type Theme,
+  type ThemeClass,
+} from '@core/primitives/app-settings/api';
 import {
   THEME_CLASS_DARK,
   THEME_CLASS_LIGHT,
   THEME_CLASSES,
+  THEME_POLARITY_STORAGE_KEY,
+  THEME_PRESET_CLASS,
   THEME_STORAGE_KEY,
 } from './theme-classes';
 import { getNextTheme } from './theme-toggle-model';
@@ -32,9 +39,9 @@ function getSystemTheme(): EffectiveTheme {
  * Map the app's effective theme class to the @emdash/ui theme id, via the
  * manifest selectors so a rename fails loudly instead of drifting.
  */
-function uiThemeId(effective: EffectiveTheme): ThemeId {
-  const entry = THEME_MANIFEST.find((e) => e.selector === `.${effective}`);
-  if (!entry) throw new Error(`No @emdash/theme entry for selector ".${effective}"`);
+function uiThemeId(themeClass: ThemeClass): ThemeId {
+  const entry = THEME_MANIFEST.find((e) => e.selector === `.${themeClass}`);
+  if (!entry) throw new Error(`No @emdash/theme entry for selector ".${themeClass}"`);
   return entry.id as ThemeId;
 }
 
@@ -44,11 +51,13 @@ function subscribeToSystemTheme(onChange: () => void) {
   return () => mq.removeEventListener('change', onChange);
 }
 
-function applyTheme(effective: EffectiveTheme) {
+/** Polarity class drives the base palette; the theme class (same for Light/Dark) overrides it. */
+function applyTheme(effective: EffectiveTheme, themeClass: ThemeClass) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  root.classList.remove(...THEME_CLASSES);
-  root.classList.add(effective);
+  root.classList.remove(...Object.keys(THEME_POLARITY), THEME_PRESET_CLASS);
+  root.classList.add(effective, themeClass);
+  if (themeClass !== effective) root.classList.add(THEME_PRESET_CLASS);
 }
 
 export interface ThemeContextType {
@@ -56,6 +65,7 @@ export interface ThemeContextType {
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   effectiveTheme: EffectiveTheme;
+  themeClass: ThemeClass;
 }
 
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -76,21 +86,23 @@ export function ThemeProvider({
   onThemeApplied,
 }: ThemeProviderProps) {
   const systemTheme = useSyncExternalStore(subscribeToSystemTheme, getSystemTheme);
-  const effectiveTheme: EffectiveTheme = theme ?? systemTheme;
+  const effectiveTheme: EffectiveTheme = theme ? themePolarityClass(theme) : systemTheme;
+  const themeClass: ThemeClass = theme ?? systemTheme;
 
   useLayoutEffect(() => {
     if (isLoading) return;
-    applyTheme(effectiveTheme);
-  }, [effectiveTheme, isLoading]);
+    applyTheme(effectiveTheme, themeClass);
+  }, [effectiveTheme, themeClass, isLoading]);
 
   useEffect(() => {
     if (isLoading) return;
     try {
       localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+      localStorage.setItem(THEME_POLARITY_STORAGE_KEY, effectiveTheme);
     } catch {
       // Local storage is only a startup paint cache; persisted settings remain authoritative.
     }
-  }, [theme, isLoading]);
+  }, [theme, effectiveTheme, isLoading]);
 
   const setTheme = (newTheme: Theme) => {
     onThemeChange(newTheme);
@@ -103,14 +115,14 @@ export function ThemeProvider({
 
   useEffect(() => {
     if (!isLoading) onThemeApplied?.(effectiveTheme);
-  }, [effectiveTheme, isLoading, onThemeApplied]);
+  }, [effectiveTheme, themeClass, isLoading, onThemeApplied]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, effectiveTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, effectiveTheme, themeClass }}>
       {/* Context-only @emdash/ui provider: the app's applyTheme above stays the
           sole DOM class writer; this makes @emdash/ui's useTheme() (needed by
           theme-aware components like markdown/shiki) work app-wide. */}
-      <UiThemeProvider target="none" theme={uiThemeId(effectiveTheme)}>
+      <UiThemeProvider target="none" theme={uiThemeId(themeClass)}>
         {children}
       </UiThemeProvider>
     </ThemeContext.Provider>

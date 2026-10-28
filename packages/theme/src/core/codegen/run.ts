@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { ALL_DENSITIES } from '../../densities/registry';
 import { darkTheme } from '../../themes/dark.theme';
 import { lightTheme } from '../../themes/light.theme';
+import { presetThemes } from '../../themes/presets.theme';
 import { solarizedDarkTheme } from '../../themes/solarized-dark.theme';
 import { solarizedLightTheme } from '../../themes/solarized-light.theme';
 import type { ResolvedDensity } from '../define-density';
@@ -35,6 +36,7 @@ const ALL_THEMES: ResolvedTheme[] = [
   darkTheme,
   solarizedLightTheme,
   solarizedDarkTheme,
+  ...presetThemes,
 ];
 
 const DENSITIES: ResolvedDensity[] = [...ALL_DENSITIES];

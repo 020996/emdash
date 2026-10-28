@@ -132,8 +132,12 @@ export class FlutterRunner {
     );
   }
 
-  stop(): Promise<void> {
-    return this.send('q');
+  /** `q` is only read once the app is attached. While building, Ctrl+C aborts the whole command
+   * line, so the exit marker never prints and the run is ended here instead. */
+  async stop(): Promise<void> {
+    if (this.phase !== 'starting') return this.send('q');
+    await this.send('\x03');
+    runInAction(() => this.endRun());
   }
 
   hotRestart(): Promise<void> {
@@ -214,15 +218,19 @@ export class FlutterRunner {
     if (!this.runToken) return;
     const recent = reset ? this.output : this.output.slice(-(text.length + MARKER_OVERLAP));
     if (recent.includes(markerText('X', this.runToken))) {
-      this.runToken = null;
-      this.phase = 'idle';
-      this.clearPreviews();
+      this.endRun();
       return;
     }
     if (this.phase === 'running') return;
     const start = this.output.indexOf(markerText('S', this.runToken));
     if (start === -1) return;
     if (this.output.includes('Flutter run key commands', start)) this.phase = 'running';
+  }
+
+  private endRun(): void {
+    this.runToken = null;
+    this.phase = 'idle';
+    this.clearPreviews();
   }
 
   /** The shell outlives `flutter run`, so its DevTools preview pill is not dropped on its own. */

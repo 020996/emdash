@@ -6,6 +6,8 @@
  * without pulling in the full theme creation pipeline.
  */
 
+import { THEME_PRESETS } from './presets';
+
 export type ThemeManifestEntry = {
   id: string;
   label: string;
@@ -28,6 +30,12 @@ export const THEME_MANIFEST: readonly ThemeManifestEntry[] = [
     polarity: 'dark',
     selector: '.emsolarized-dark',
   },
+  ...THEME_PRESETS.map(({ id, label, polarity }) => ({
+    id,
+    label,
+    polarity,
+    selector: `.em${id}` as const,
+  })),
 ] as const;
 
 export type ThemeId = (typeof THEME_MANIFEST)[number]['id'];

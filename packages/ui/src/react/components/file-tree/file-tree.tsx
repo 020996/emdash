@@ -452,6 +452,13 @@ function FileTreeInner(
           <span className={styles.chevron} aria-hidden>
             {isExpanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
           </span>
+        ) : null}
+        {isExpandableFileTreeNode(node) ? (
+          icon && (
+            <span className={styles.chevron} aria-hidden>
+              {icon}
+            </span>
+          )
         ) : (
           <span className={styles.chevron} aria-hidden>
             {icon}

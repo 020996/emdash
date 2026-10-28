@@ -76,10 +76,12 @@ vi.mock('@emdash/ui/react/primitives', async (importOriginal) => {
     children,
     disabled,
     value,
+    onClick,
   }: {
     children: React.ReactNode;
     disabled?: boolean;
     value: string;
+    onClick?: () => void;
   }) {
     const { onValueChange } = React.useContext(DropdownMenuContext);
     return React.createElement(
@@ -87,7 +89,10 @@ vi.mock('@emdash/ui/react/primitives', async (importOriginal) => {
       {
         disabled,
         'data-testid': `open-in-option-${value}`,
-        onClick: () => onValueChange?.(value),
+        onClick: () => {
+          onClick?.();
+          onValueChange?.(value);
+        },
       },
       children
     );

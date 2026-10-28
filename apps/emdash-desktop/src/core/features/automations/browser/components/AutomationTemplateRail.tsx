@@ -16,9 +16,16 @@ export function AutomationTemplateRail({
   className,
 }: AutomationTemplateRailProps) {
   return (
-    <div className={cn('flex gap-2 overflow-x-auto p-4 pt-0', className)}>
+    <div
+      className={cn(
+        compact
+          ? 'grid max-h-72 grid-cols-2 gap-3 overflow-y-auto px-4 pt-1 pb-4'
+          : 'flex gap-2 overflow-x-auto p-4 pt-0',
+        className
+      )}
+    >
       {templates.map((template) => (
-        <div key={template.id} className={cn('w-56 shrink-0')}>
+        <div key={template.id} className={cn(!compact && 'w-56 shrink-0')}>
           <AutomationTemplateCard template={template} onSelect={onSelect} compact={compact} />
         </div>
       ))}

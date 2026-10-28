@@ -1,6 +1,6 @@
 import type { GitChange } from '@emdash/core/runtimes/git/api';
 import { EmptyState } from '@emdash/ui/react/components';
-import { Button, toast } from '@emdash/ui/react/primitives';
+import { toast } from '@emdash/ui/react/primitives';
 import { Minus } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { gitCheckoutStoreToken } from '@core/features/source-control/contributions/browser/workspace-store-tokens';
@@ -12,10 +12,9 @@ import {
 import { HEAD_REF } from '@core/primitives/git/api';
 import { commitRef } from '@core/primitives/git/api';
 import { activeDiffEntry } from '../pane-selectors';
-import { ActionCard } from './components/action-card';
+import { RowAction } from './components/changes-list-item';
 import { ChangesListOrTree } from './components/changes-list-or-tree';
 import { ChangesViewModeToggle } from './components/changes-view-mode-toggle';
-import { CommitCard } from './components/commit-card';
 import { SectionHeader } from './components/section-header';
 import { useChangesViewMode } from './hooks/use-changes-view-mode';
 import { usePrefetchDiffModels } from './hooks/use-prefetch-diff-models';
@@ -30,13 +29,28 @@ export const StagedSectionHeader = observer(function StagedSectionHeader() {
 
   if (!changesView) return null;
 
+  const handleUnstageAll = () => {
+    void git.unstageAllFiles().then((result) => {
+      if (!result.success) {
+        toast.error(`Failed to unstage changes: ${formatErrorType(result.error)} `);
+      }
+    });
+  };
+
   return (
     <SectionHeader
       label="Staged"
       count={git.stagedFileChanges.length}
-      selectionState={changesView.stagedSelectionState}
-      onToggleAll={() => changesView.toggleAllStaged()}
-      actions={<ChangesViewModeToggle value={viewMode} onChange={setViewMode} label="Staged" />}
+      actions={
+        <>
+          {git.stagedFileChanges.length > 0 && (
+            <RowAction title="Unstage all changes" onClick={handleUnstageAll}>
+              <Minus className="size-3.5" />
+            </RowAction>
+          )}
+          <ChangesViewModeToggle value={viewMode} onChange={setViewMode} label="Staged" />
+        </>
+      }
       collapsed={!changesView.expandedSections.staged}
       onToggleCollapsed={() => changesView.toggleExpanded('staged')}
     />
@@ -95,19 +109,8 @@ export const StagedSectionBody = observer(function StagedSectionBody() {
     );
   };
 
-  const handleUnstageSelection = () => {
-    const paths = [...changesView.stagedSelection];
+  const unstagePaths = (paths: string[]) => {
     void git.unstageFiles(paths).then((result) => {
-      if (!result.success) {
-        toast.error(`Failed to unstage changes: ${formatErrorType(result.error)} `);
-        return;
-      }
-      changesView.removeStagedSelection(paths);
-    });
-  };
-
-  const handleUnstageAll = () => {
-    void git.unstageAllFiles().then((result) => {
       if (!result.success) {
         toast.error(`Failed to unstage changes: ${formatErrorType(result.error)} `);
       }
@@ -123,48 +126,22 @@ export const StagedSectionBody = observer(function StagedSectionBody() {
         />
       )}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {hasChanges && changesView.stagedSelection.size > 0 && (
-          <ActionCard
-            selectedCount={changesView.stagedSelection.size}
-            selectionActions={
-              <Button
-                variant="secondary"
-                size="xs"
-                onClick={handleUnstageSelection}
-                title="Unstage selected files"
-              >
-                <Minus className="size-3" />
-                Unstage
-              </Button>
-            }
-            generalActions={
-              <Button
-                variant="ghost"
-                size="xs"
-                disabled={!hasChanges}
-                onClick={handleUnstageAll}
-                title="Unstage all files"
-              >
-                <Minus className="size-3" />
-                Unstage all
-              </Button>
-            }
-          />
-        )}
         <div className="min-h-0 flex-1 px-1">
           <ChangesListOrTree
             viewMode={viewMode}
             changes={changes}
             rootPath={workspace.path}
-            isSelected={(path) => changesView.stagedSelection.has(path)}
-            onToggleSelect={(path) => changesView.toggleStagedItem(path)}
             activePath={activePath}
             onSelectChange={handleSelectChange}
             onDoubleClickChange={handleDoubleClickChange}
             onPrefetch={(change) => prefetch(change.path)}
+            rowActions={(change) => (
+              <RowAction title="Unstage changes" onClick={() => unstagePaths([change.path])}>
+                <Minus className="size-3.5" />
+              </RowAction>
+            )}
           />
         </div>
-        {hasChanges && <CommitCard />}
       </div>
     </>
   );

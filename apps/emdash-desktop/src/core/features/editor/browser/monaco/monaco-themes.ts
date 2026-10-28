@@ -1,15 +1,37 @@
 import type { Monaco } from '@monaco-editor/react';
+import {
+  THEME_POLARITY,
+  themePolarityClass,
+  type ThemeClass,
+} from '@core/primitives/app-settings/api';
 import { cssColorToHex } from '@core/primitives/styling/browser/cssVars';
 
 type MonacoColors = Record<string, string>;
+type MonacoRule = { token: string; foreground: string };
+
+/** Generated `--em-syntax-<role>` var → Monaco token. */
+const SYNTAX_TOKENS: Array<[string, string]> = [
+  ['comment', 'comment'],
+  ['keyword', 'keyword'],
+  ['string', 'string'],
+  ['number', 'number'],
+  ['regexp', 'regexp'],
+  ['type', 'type'],
+  ['function', 'function'],
+  ['variable', 'variable'],
+  ['operator', 'delimiter'],
+  ['tag', 'tag'],
+  ['attribute', 'attribute.name'],
+  ['property', 'property'],
+];
 
 /**
  * Reads all --monaco-* CSS custom properties from an element bearing the given
  * theme class, converts each value to a hex string, and returns a Monaco color
- * token map. Entries where the variable is not defined for that theme are
- * omitted.
+ * token map plus syntax rules. Entries where the variable is not defined for
+ * that theme are omitted.
  */
-function readMonacoVarsForTheme(cssClass: 'emlight' | 'emdark'): MonacoColors {
+function readMonacoVarsForTheme(cssClass: string): { colors: MonacoColors; rules: MonacoRule[] } {
   const el = document.createElement('div');
   el.className = cssClass;
   el.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
@@ -46,26 +68,32 @@ function readMonacoVarsForTheme(cssClass: 'emlight' | 'emdark'): MonacoColors {
     }
   }
 
+  const rules: MonacoRule[] = [];
+  for (const [role, token] of SYNTAX_TOKENS) {
+    const value = get(`--em-syntax-${role}`);
+    if (value) rules.push({ token, foreground: cssColorToHex(value).replace('#', '') });
+  }
+
   el.remove();
-  return colors;
+  return { colors, rules };
 }
 
 export function defineMonacoThemes(monaco: Monaco): void {
-  monaco.editor.defineTheme('custom-dark', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [],
-    colors: readMonacoVarsForTheme('emdark'),
-  });
-
-  monaco.editor.defineTheme('custom-light', {
-    base: 'vs',
-    inherit: true,
-    rules: [],
-    colors: readMonacoVarsForTheme('emlight'),
-  });
+  for (const themeClass of Object.keys(THEME_POLARITY) as ThemeClass[]) {
+    const polarity = themePolarityClass(themeClass);
+    const { colors, rules } = readMonacoVarsForTheme(
+      themeClass === polarity ? polarity : `${polarity} ${themeClass} em-preset`
+    );
+    monaco.editor.defineTheme(getMonacoTheme(themeClass), {
+      base: polarity === 'emdark' ? 'vs-dark' : 'vs',
+      inherit: true,
+      // Light/Dark keep Monaco's stock syntax colors; presets use their own.
+      rules: themeClass === polarity ? [] : rules,
+      colors,
+    });
+  }
 }
 
-export function getMonacoTheme(effectiveTheme: string): string {
-  return effectiveTheme === 'emlight' ? 'custom-light' : 'custom-dark';
+export function getMonacoTheme(themeClass: ThemeClass): string {
+  return `custom-${themeClass}`;
 }

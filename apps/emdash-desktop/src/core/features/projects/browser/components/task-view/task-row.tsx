@@ -1,6 +1,8 @@
 import { AgentStatus } from '@emdash/ui/react/components';
-import { Checkbox, RelativeTime } from '@emdash/ui/react/primitives';
+import { RelativeTime } from '@emdash/ui/react/primitives';
+import { Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
+import type { ReactNode } from 'react';
 import { StackedAgentLogos } from '@core/features/agents/contributions/browser/stacked-agent-logos';
 import {
   taskAgentStatus,
@@ -18,22 +20,14 @@ import { useOpenModal } from '@core/manifests/browser/modal-api';
 import { cn } from '@core/primitives/styling/browser/cn';
 import { selectCurrentPr } from '@root/src/core/services/pull-requests/api';
 import { PrBadge } from '@root/src/core/services/pull-requests/browser/components/pr-badge';
-import { type ReadyTask, type TaskListViewModel } from './task-list-model';
+import { type ReadyTask } from './task-list-model';
 
 /**
  * Row content for the project task list. The CollectionView shell owns row
  * click (navigation) and modifier-click selection; this component renders the
- * content, the hover-revealed checkbox, and the context menu.
+ * content, the hover-revealed row actions, and the context menu.
  */
-export const TaskRow = observer(function TaskRow({
-  task,
-  view,
-}: {
-  task: ReadyTask;
-  view: TaskListViewModel;
-}) {
-  const { id } = view.useItem();
-  const selection = view.useSelection();
+export const TaskRow = observer(function TaskRow({ task }: { task: ReadyTask }) {
   const openDeleteTask = useOpenModal('deleteTaskModal');
   const taskManager = getTaskManagerStore(task.data.projectId);
 
@@ -54,7 +48,6 @@ export const TaskRow = observer(function TaskRow({
     });
   };
   const isArchived = Boolean(task.data.archivedAt);
-  const isSelected = selection.isSelected(id);
   const canPin = task.state !== 'unregistered';
   const agentAttention = taskAgentStatus(task);
   const currentPr = selectCurrentPr(getTaskPrAssociationStore(task).pullRequests);
@@ -75,30 +68,6 @@ export const TaskRow = observer(function TaskRow({
       onDelete={handleDelete}
     >
       <div className="group flex w-full items-center gap-2">
-        {/*
-          Mouse clicks land on the wrapper (the checkbox is pointer-events-none)
-          so the real event's modifier keys reach `toggle`; keyboard activation
-          reaches the focusable checkbox itself and toggles via onCheckedChange.
-          The target check keeps the keyboard path from double-toggling through
-          the synthetic click that bubbles up.
-        */}
-        <span
-          onClick={(event) => {
-            event.stopPropagation();
-            if (event.target === event.currentTarget) selection.toggle(id, event);
-          }}
-          className={cn(
-            'inline-flex cursor-pointer transition-opacity focus-within:opacity-100',
-            isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-          )}
-        >
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => selection.toggle(id)}
-            className="pointer-events-none"
-            aria-label="Select task"
-          />
-        </span>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="min-w-0 truncate text-left text-sm">
             {getTaskDisplayName(task.data.projectId, task.data.id)}
@@ -123,7 +92,60 @@ export const TaskRow = observer(function TaskRow({
             />
           )}
         </div>
+        <span className="flex items-center gap-0.5">
+          {isArchived ? (
+            <RowAction title="Restore" onClick={handleRestore}>
+              <RotateCcw className="size-3.5" />
+            </RowAction>
+          ) : (
+            <RowAction title="Archive" onClick={handleArchive}>
+              <Archive className="size-3.5" />
+            </RowAction>
+          )}
+          <RowAction title="Delete" onClick={handleDelete} destructive>
+            <Trash2 className="size-3.5" />
+          </RowAction>
+        </span>
       </div>
     </TaskContextMenu>
   );
 });
+
+/** Hover icon action inside a row; a span so it never nests inside the row's button. */
+function RowAction({
+  title,
+  onClick,
+  destructive = false,
+  children,
+}: {
+  title: string;
+  onClick(): void;
+  destructive?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      title={title}
+      aria-label={title}
+      className={cn(
+        'flex size-6 items-center justify-center rounded text-foreground-muted hover:bg-background-3',
+        destructive ? 'hover:text-foreground-destructive' : 'hover:text-foreground'
+      )}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      }}
+    >
+      {children}
+    </span>
+  );
+}

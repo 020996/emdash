@@ -46,10 +46,9 @@ import {
   type FileTreeGitDecorations,
 } from '@core/features/editor/browser/file-tree/file-tree-git-decorations';
 import { FileContentSearchResults } from '@core/features/editor/browser/task-editor/file-content-search';
-import { FileNameSearchResults } from '@core/features/editor/browser/task-editor/file-name-search-results';
 import type { TreeMutationError } from '@core/features/editor/browser/task-editor/stores/files-store';
 import type { FilesStore } from '@core/features/editor/browser/task-editor/stores/files-store';
-import { FileIcon } from '@core/features/editor/contributions/browser/file-icon';
+import { FileIcon, FolderIcon } from '@core/features/editor/contributions/browser/file-icon';
 import { fileTreeScope } from '@core/features/editor/contributions/scopes';
 import { getFilesClient } from '@core/features/files/api/browser/client';
 import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
@@ -801,10 +800,7 @@ export const EditorFileTree = observer(function EditorFileTree() {
         description={liveActionDisabledReason ?? 'The file tree has not been observed yet.'}
       />
     ) : searchQuery && !liveActionsDisabled ? (
-      <>
-        <FileNameSearchResults workspaceId={workspaceId} query={searchQuery} />
-        <FileContentSearchResults workspaceId={workspaceId} query={searchQuery} />
-      </>
+      <FileContentSearchResults workspaceId={workspaceId} query={searchQuery} />
     ) : (
       <FileTree
         ref={treeRef}
@@ -871,10 +867,10 @@ export const EditorFileTree = observer(function EditorFileTree() {
         onRenameSubmit={handleRename}
         onRenameCancel={() => setRenamePath(null)}
         getContextMenuItems={getContextMenuItems}
-        renderIcon={(node) => {
+        renderIcon={(node, { expanded }) => {
           if (node.type === 'file') return <FileIcon filename={node.name} size={12} />;
           if (node.type === 'symlink') return <Link2 size={12} />;
-          return null;
+          return <FolderIcon name={node.name} expanded={expanded} size={12} />;
         }}
         renderDecoration={(node) => {
           if (node.type !== 'directory') return null;
@@ -979,7 +975,7 @@ export function FileTreeHeaderBar({
           value={searchQuery}
           maxLength={FILE_SEARCH_MAX_QUERY_LENGTH}
           aria-label="Search"
-          placeholder="Search"
+          placeholder="Search in files"
           onClear={() => setSearchQuery('')}
           onChange={(event) => setSearchQuery(event.target.value)}
           onKeyDown={(event) => {

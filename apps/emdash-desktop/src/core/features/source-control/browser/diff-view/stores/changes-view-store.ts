@@ -1,8 +1,6 @@
-import { computed, makeObservable, observable, reaction, runInAction, when } from 'mobx';
+import { computed, makeObservable, reaction, runInAction, when } from 'mobx';
 import { type PrStore } from '@core/features/source-control/api/browser/stores/pr-store';
 import { type GitCheckoutStore } from '../../stores/git-checkout-store';
-
-export type SelectionState = 'all' | 'none' | 'partial';
 
 export interface ExpandedSections {
   unstaged: boolean;
@@ -24,9 +22,6 @@ export interface ExpandedSectionsPersistence {
 const ALL_EXPANDED: ExpandedSections = { unstaged: true, staged: true, pullRequests: true };
 
 export class ChangesViewStore {
-  unstagedSelection = observable.set<string>();
-  stagedSelection = observable.set<string>();
-
   private _disposeReactions: Array<() => void> = [];
   private _suppressAutoExpand = new Set<keyof ExpandedSections>();
 
@@ -37,31 +32,7 @@ export class ChangesViewStore {
   ) {
     makeObservable(this, {
       expandedSections: computed,
-      unstagedSelectionState: computed,
-      stagedSelectionState: computed,
     });
-
-    // Prune stale paths from selections whenever the file lists change.
-    this._disposeReactions.push(
-      reaction(
-        () => ({
-          unstaged: this.gitCheckout.unstagedFileChanges.map((c) => c.path),
-          staged: this.gitCheckout.stagedFileChanges.map((c) => c.path),
-        }),
-        ({ unstaged, staged }) => {
-          const unstagedSet = new Set<string>(unstaged);
-          const stagedSet = new Set<string>(staged);
-          runInAction(() => {
-            for (const p of this.unstagedSelection) {
-              if (!unstagedSet.has(p)) this.unstagedSelection.delete(p);
-            }
-            for (const p of this.stagedSelection) {
-              if (!stagedSet.has(p)) this.stagedSelection.delete(p);
-            }
-          });
-        }
-      )
-    );
 
     // Once the first git load completes: seed a sensible initial expansion for
     // tasks that have never persisted one (a persisted value wins), then start
@@ -150,70 +121,6 @@ export class ChangesViewStore {
   /** Single write path for the expansion fact — everything persists through it. */
   private setSections(next: ExpandedSections): void {
     runInAction(() => this.sections.set(next));
-  }
-
-  get unstagedSelectionState(): SelectionState {
-    const total = this.gitCheckout.unstagedFileChanges.length;
-    const selected = this.unstagedSelection.size;
-    if (total === 0 || selected === 0) return 'none';
-    if (selected === total) return 'all';
-    return 'partial';
-  }
-
-  get stagedSelectionState(): SelectionState {
-    const total = this.gitCheckout.stagedFileChanges.length;
-    const selected = this.stagedSelection.size;
-    if (total === 0 || selected === 0) return 'none';
-    if (selected === total) return 'all';
-    return 'partial';
-  }
-
-  toggleUnstagedItem(path: string): void {
-    if (this.unstagedSelection.has(path)) {
-      this.unstagedSelection.delete(path);
-    } else {
-      this.unstagedSelection.add(path);
-    }
-  }
-
-  toggleAllUnstaged(): void {
-    if (this.unstagedSelectionState === 'all') {
-      this.unstagedSelection.clear();
-    } else {
-      for (const c of this.gitCheckout.unstagedFileChanges) {
-        this.unstagedSelection.add(c.path);
-      }
-    }
-  }
-
-  removeUnstagedSelection(paths: readonly string[]): void {
-    for (const path of paths) {
-      this.unstagedSelection.delete(path);
-    }
-  }
-
-  toggleStagedItem(path: string): void {
-    if (this.stagedSelection.has(path)) {
-      this.stagedSelection.delete(path);
-    } else {
-      this.stagedSelection.add(path);
-    }
-  }
-
-  toggleAllStaged(): void {
-    if (this.stagedSelectionState === 'all') {
-      this.stagedSelection.clear();
-    } else {
-      for (const c of this.gitCheckout.stagedFileChanges) {
-        this.stagedSelection.add(c.path);
-      }
-    }
-  }
-
-  removeStagedSelection(paths: readonly string[]): void {
-    for (const path of paths) {
-      this.stagedSelection.delete(path);
-    }
   }
 
   toggleExpanded(section: keyof ExpandedSections): void {
