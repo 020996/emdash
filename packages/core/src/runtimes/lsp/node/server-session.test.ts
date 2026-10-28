@@ -53,8 +53,9 @@ function fixture() {
     servers.push(server);
     return server;
   });
-  const session = new LanguageServerSession({ rootUri: 'file:///workspace', connect });
-  return { session, servers, connect };
+  const onState = vi.fn();
+  const session = new LanguageServerSession({ rootUri: 'file:///workspace', connect, onState });
+  return { session, servers, connect, onState };
 }
 
 describe('language server session', () => {
@@ -323,6 +324,28 @@ describe('language server session', () => {
       await session.closeDocument(document.uri);
       expect(session.current.diagnostics).toEqual([]);
       expect(servers[0].messages.at(-1)?.method).toBe('textDocument/didClose');
+    } finally {
+      await session.dispose();
+    }
+  });
+
+  it('keeps workspace diagnostics for files that are not open (Problems view)', async () => {
+    const { session, servers, onState } = fixture();
+    try {
+      await session.setDocumentSnapshot(document);
+      const diagnostic = {
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+        message: 'unused import',
+      };
+      servers[0].emit('textDocument/publishDiagnostics', {
+        uri: 'file:///workspace/lib/other.dart',
+        diagnostics: [diagnostic],
+      });
+      expect(session.current.diagnostics).toEqual([
+        { uri: 'file:///workspace/lib/other.dart', diagnostics: [diagnostic] },
+      ]);
+      // Background files are batched to one state notification.
+      await vi.waitFor(() => expect(onState.mock.calls.at(-1)?.[0].diagnostics).toHaveLength(1));
     } finally {
       await session.dispose();
     }

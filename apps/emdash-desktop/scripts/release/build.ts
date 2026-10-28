@@ -4,7 +4,6 @@ import { parseArgs } from 'node:util';
 import { Octokit } from '@octokit/rest';
 import { Arch, Platform, build as electronBuild } from 'electron-builder';
 import type { Configuration } from 'electron-builder';
-import canaryConfig from '../../electron-builder.canary.config.ts';
 import stableConfig from '../../electron-builder.config.ts';
 import {
   duplicateChannelManifests,
@@ -124,9 +123,7 @@ const configName = basename(values.config ?? 'electron-builder.config.ts');
 const baseConfig: Configuration =
   configName === 'electron-builder.config.ts'
     ? stableConfig
-    : configName === 'electron-builder.canary.config.ts'
-      ? canaryConfig
-      : fail(`Unknown electron-builder config "${configName}"`);
+    : fail(`Unknown electron-builder config "${configName}"`);
 const publishArray = Array.isArray(baseConfig.publish)
   ? baseConfig.publish
   : baseConfig.publish

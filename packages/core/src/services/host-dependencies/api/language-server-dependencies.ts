@@ -78,6 +78,28 @@ export const LANGUAGE_SERVER_DEPENDENCIES: HostDependencyDefinition[] = [
     }),
   },
   {
+    id: 'dart',
+    name: 'Dart language server (Dart / Flutter SDK)',
+    category: 'core',
+    binaryNames: ['dart'],
+    installDocs: 'https://dart.dev/get-dart',
+    status: 'active',
+    installCommands: {
+      macos: [{ method: 'homebrew', command: 'brew install dart-sdk', elevation: 'never' }],
+      linux: [
+        {
+          method: 'other',
+          command: 'snap install flutter --classic',
+          label: 'Install Flutter with snap (includes the Dart SDK)',
+          elevation: 'always',
+        },
+      ],
+      windows: [
+        { method: 'winget', command: 'winget install --id Google.DartSDK', elevation: 'never' },
+      ],
+    },
+  },
+  {
     id: 'clangd',
     name: 'C / C++ language server (clangd)',
     category: 'core',
@@ -111,6 +133,12 @@ export const LANGUAGE_SERVER_DEPENDENCIES: HostDependencyDefinition[] = [
       'vscode-langservers-extracted@4.10.0',
       'https://github.com/hrsh7th/vscode-langservers-extracted'
     )
+  ),
+  npmServer(
+    'intelephense',
+    'PHP language server (Intelephense)',
+    'intelephense@1.18.5',
+    'https://intelephense.com'
   ),
   npmServer(
     'yaml-language-server',

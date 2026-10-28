@@ -45,6 +45,12 @@ export const content = recipe({
     selectors: {
       '&[data-open]': { animation: `${kfPopupIn} 100ms both` },
       '&[data-closed]': { animation: `${kfPopupOut} 100ms both` },
+      // See-through window: the base surface is too thin for a modal over busy content, so lift
+      // it to the elevated level and blur what is behind.
+      ':where(.em-transparent) &': {
+        backgroundColor: vars.surfaceElevated,
+        backdropFilter: 'blur(24px) saturate(1.4)',
+      },
     },
   },
   variants: {

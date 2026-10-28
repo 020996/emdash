@@ -131,6 +131,8 @@ export class FrontendPty {
       lineHeight: TERMINAL_LINE_HEIGHT,
       letterSpacing: TERMINAL_LETTER_SPACING,
       allowProposedApi: true,
+      // The see-through window gives --xterm-bg alpha; xterm only honors it with this on.
+      allowTransparency: true,
       scrollOnUserInput: false,
       linkHandler: {
         activate: (event: MouseEvent, text: string) => {

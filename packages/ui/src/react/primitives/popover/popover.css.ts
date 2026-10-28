@@ -1,4 +1,5 @@
-import { style } from '@vanilla-extract/css';
+import { globalStyle, style } from '@vanilla-extract/css';
+import { TRANSPARENT, transparentPopup } from '../../../styles/recipes/glass.css';
 import {
   kfPopupIn,
   kfPopupOut,
@@ -43,6 +44,7 @@ export const popupContent = style({
     '&[data-closed]': { animation: `${kfPopupOut} 100ms both` },
   },
 });
+globalStyle(`${TRANSPARENT} ${popupContent}`, transparentPopup);
 
 export const popoverHeader = style({
   display: 'flex',

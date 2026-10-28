@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { APP_NAME_LOWER } from '@core/primitives/app-identity/api/app-identity';
 import type { RenderableFileNode } from '@core/features/editor/api/browser/file-tree/tree-utils';
 import type { FileTabResource } from '@core/features/editor/api/browser/task-editor/stores/file-tab-resource';
 import {
@@ -92,6 +93,8 @@ type ResultLikeError =
   | TreeMutationError
   | { message?: string; type?: string; paths?: readonly string[] };
 type FileTreeClipboard = { mode: 'cut' | 'copy'; paths: string[] };
+// Served by the main-process app protocol (src/main/host/protocol.ts) for Finder drag-out.
+const APP_WORKSPACE_FILE_URL = `app://${APP_NAME_LOWER}/__workspace-file`;
 
 function resultErrorMessage(error: ResultLikeError | string | undefined): string {
   if (typeof error === 'string') return error;
@@ -243,6 +246,11 @@ export const EditorFileTree = observer(function EditorFileTree() {
   const [selectedPaths, setSelectedPaths] = useState<ReadonlySet<string>>(new Set());
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(null);
   const [clipboard, setClipboard] = useState<FileTreeClipboard | null>(null);
+  // Local workspaces share files with Finder through the OS clipboard (macOS).
+  const isLocal = !workspace.sshConnectionId;
+  // What the tree last put on the OS clipboard: pasting it back runs the in-tree copy/move.
+  const osClipboardRef = useRef<string[]>([]);
+  const canPaste = isLocal || Boolean(clipboard?.paths.length);
   const [pendingDraft, setPendingDraft] = useState<'file' | 'directory' | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -597,6 +605,7 @@ export const EditorFileTree = observer(function EditorFileTree() {
     const paths = dedupeDescendantPaths(selectionOrNode(node).map((entry) => entry.path));
     if (paths.length === 0) return;
     setClipboard({ mode: 'cut', paths });
+    writeOsClipboard(paths);
     toast(paths.length === 1 ? 'Item cut' : `${paths.length} items cut`);
   };
 
@@ -604,10 +613,39 @@ export const EditorFileTree = observer(function EditorFileTree() {
     const paths = dedupeDescendantPaths(selectionOrNode(node).map((entry) => entry.path));
     if (paths.length === 0) return;
     setClipboard({ mode: 'copy', paths });
+    writeOsClipboard(paths);
     toast(paths.length === 1 ? 'Item copied' : `${paths.length} items copied`);
   };
 
+  const writeOsClipboard = (paths: string[]) => {
+    if (!isLocal) return;
+    osClipboardRef.current = paths;
+    void getHostClient().then((host) => host.clipboardWriteFiles({ paths }));
+  };
+
+  /** Files copied in Finder; empty when the OS clipboard still holds the tree's own copy. */
+  const readFinderFiles = async (): Promise<string[]> => {
+    if (!isLocal) return [];
+    const paths = await (await getHostClient()).clipboardReadFiles();
+    const own = osClipboardRef.current;
+    return paths.length === own.length && paths.every((path, i) => path === own[i]) ? [] : paths;
+  };
+
   const pasteClipboard = async (targetDirPath = pasteTargetPath()) => {
+    const finderFiles = await readFinderFiles();
+    if (finderFiles.length > 0) {
+      const result = await (
+        await getHostClient()
+      ).pasteFilesIntoWorkspace({
+        workspaceId,
+        relativeDir: relativeToWorkspace(workspace.path, targetDirPath),
+        sources: finderFiles,
+      });
+      if (result.success)
+        toast(finderFiles.length === 1 ? 'Item pasted' : `${finderFiles.length} items pasted`);
+      else toast.error('Paste failed', { description: result.error });
+      return;
+    }
     if (!files || !clipboard || clipboard.paths.length === 0) return;
     const existingNames = existingChildNames(
       targetDirPath,
@@ -690,7 +728,7 @@ export const EditorFileTree = observer(function EditorFileTree() {
         id: 'paste',
         label: 'Paste',
         icon: <ClipboardPaste size={14} />,
-        disabled: !clipboard || clipboard.paths.length === 0,
+        disabled: !canPaste,
         onSelect: () => void pasteClipboard(creationTargetForNode(node, workspace.path)),
       }
     );
@@ -766,7 +804,7 @@ export const EditorFileTree = observer(function EditorFileTree() {
       availability: () =>
         liveActionDisabledReason
           ? disabled(liveActionDisabledReason)
-          : clipboard
+          : canPaste
             ? enabled
             : disabled('Nothing to paste'),
       execute: () => void pasteClipboard(),
@@ -834,7 +872,7 @@ export const EditorFileTree = observer(function EditorFileTree() {
                 treeRef.current?.startDraft('directory', normalizeFileTreePath(workspace.path)),
             },
           ];
-          if (clipboard && clipboard.paths.length > 0) {
+          if (canPaste) {
             items.push({
               id: 'paste',
               label: 'Paste',
@@ -908,6 +946,19 @@ export const EditorFileTree = observer(function EditorFileTree() {
                   });
                 },
                 onDragStart: (_node, dataTransfer, selection) => {
+                  // Finder/Desktop drop: Chromium downloads one file from this URL (VS Code does
+                  // the same); folders and extra selected files stay in-app only.
+                  const file = isLocal && selection.find((node) => node.type === 'file');
+                  if (file) {
+                    const relative = relativeToWorkspace(workspace.path, file.path)
+                      .split('/')
+                      .map(encodeURIComponent)
+                      .join('/');
+                    dataTransfer.setData(
+                      'DownloadURL',
+                      `application/octet-stream:${file.name}:${APP_WORKSPACE_FILE_URL}/${encodeURIComponent(workspaceId)}/${relative}`
+                    );
+                  }
                   setDraggedWorkspaceFile(dataTransfer, {
                     workspaceId,
                     targetPaths: selection.map((node) => node.path),

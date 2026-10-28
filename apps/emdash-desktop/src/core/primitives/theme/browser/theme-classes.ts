@@ -23,3 +23,13 @@ export const THEME_POLARITY_STORAGE_KEY = 'emdash-theme-polarity';
 
 /** Marks a preset theme on `<html>`; index.css remaps the base palette onto its --em-* vars. */
 export const THEME_PRESET_CLASS = 'em-preset';
+
+/** See-through window (macOS vibrancy); index.css gives the theme backgrounds alpha. */
+export const TRANSPARENT_CLASS = 'em-transparent';
+
+/** Frosted glass on cards, buttons, tabs and menus (packages/ui recipes). */
+export const GLASS_CLASS = 'em-glass';
+
+/** localStorage flags ('1' = on) the pre-paint script reads for the two classes above. */
+export const TRANSPARENT_STORAGE_KEY = 'emdash-transparent';
+export const GLASS_STORAGE_KEY = 'emdash-glass';

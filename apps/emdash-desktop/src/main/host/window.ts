@@ -23,10 +23,28 @@ import { telemetryService } from '@main/lib/telemetry';
 import { APP_ORIGIN } from './protocol';
 
 let mainWindow: BrowserWindow | null = null;
+let currentTheme: Theme = null;
+let transparent = false;
+
+const opaqueBackground = () => (nativeTheme.shouldUseDarkColors ? '#111111' : '#fcfcfc');
 
 export function applyNativeTheme(theme: Theme): void {
-  if (process.platform !== 'win32') return;
-  nativeTheme.themeSource = theme ? THEME_POLARITY[theme] : 'system';
+  currentTheme = theme;
+  const themeSource = theme ? THEME_POLARITY[theme] : 'system';
+  if (process.platform === 'win32') nativeTheme.themeSource = themeSource;
+  // macOS follows the system unless the window is see-through: then the OS blur
+  // must match the app theme's polarity, or a dark theme sits on a light frost.
+  if (process.platform === 'darwin') nativeTheme.themeSource = transparent ? themeSource : 'system';
+}
+
+/**
+ * macOS: the window always carries vibrancy (see createMainWindow); this only aligns the OS
+ * frost with the app theme. The renderer decides whether its backgrounds let the frost show.
+ */
+export function setTransparentWindow(enabled: boolean): void {
+  if (process.platform !== 'darwin') return;
+  transparent = enabled;
+  applyNativeTheme(currentTheme);
 }
 
 export function createMainWindow(): BrowserWindow {
@@ -40,7 +58,16 @@ export function createMainWindow(): BrowserWindow {
     // appears before the splash paints is not a white flash. System-theme
     // heuristic: the DB-backed app theme is not readable this early; the
     // splash corrects to the persisted theme as soon as index.html parses.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#111111' : '#fcfcfc',
+    backgroundColor: opaqueBackground(),
+    // macOS: vibrancy has to exist from creation — setVibrancy() on a live opaque window shows
+    // nothing (Electron 40). The renderer paints opaque backgrounds over it unless the
+    // Appearance → Transparent window switch is on, so the frost only shows when asked for.
+    ...(process.platform === 'darwin' && {
+      vibrancy: 'under-window' as const,
+      // Keep the frost while unfocused; macOS otherwise flattens it to solid grey.
+      visualEffectState: 'active' as const,
+      backgroundColor: '#00000000',
+    }),
     // In production, electron-builder injects the icon from the app bundle.
     ...(import.meta.env.DEV && { icon: devIcon }),
     webPreferences: {

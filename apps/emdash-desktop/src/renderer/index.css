@@ -1297,3 +1297,459 @@
     pointer-events: auto !important;
   }
 }
+
+/* See-through window (Appearance → Transparent window; macOS vibrancy blurs the desktop
+   behind). Unlayered so it beats the @layer base palettes and the unlayered chat block above.
+   Theme hues stay; only alpha is added. Editor, terminal and chat keep a 40% scrim (80% on light themes) so text stays readable. */
+.em-transparent {
+  /* Canvas containers (body, app shell, panes) all paint bg-background; stacked, any alpha
+     compounds back to opaque. Only body keeps the tint (below); the rest go clear. */
+  --background: transparent;
+  --glass-src-background: var(--em-background);
+  /* Layered backgrounds (hover, selected, chips, menus) keep their order with alpha. */
+  --background-1: color-mix(in oklab, var(--em-background-1) 25%, transparent);
+  --glass-src-background-1: var(--em-background-1);
+  --background-2: color-mix(in oklab, var(--em-background-2) 35%, transparent);
+  --glass-src-background-2: var(--em-background-2);
+  --background-3: color-mix(in oklab, var(--em-background-3) 45%, transparent);
+  --glass-src-background-3: var(--em-background-3);
+  --background-secondary: color-mix(in oklab, var(--em-background-secondary) 25%, transparent);
+  --glass-src-background-secondary: var(--em-background-secondary);
+  --background-secondary-1: color-mix(in oklab, var(--em-background-secondary-1) 30%, transparent);
+  --glass-src-background-secondary-1: var(--em-background-secondary-1);
+  --background-secondary-2: color-mix(in oklab, var(--em-background-secondary-2) 40%, transparent);
+  --glass-src-background-secondary-2: var(--em-background-secondary-2);
+  --background-secondary-3: color-mix(in oklab, var(--em-background-secondary-3) 50%, transparent);
+  --glass-src-background-secondary-3: var(--em-background-secondary-3);
+  --background-tertiary: color-mix(in oklab, var(--em-background-tertiary) 25%, transparent);
+  --glass-src-background-tertiary: var(--em-background-tertiary);
+  --background-tertiary-1: color-mix(in oklab, var(--em-background-tertiary-1) 30%, transparent);
+  --glass-src-background-tertiary-1: var(--em-background-tertiary-1);
+  --background-tertiary-2: color-mix(in oklab, var(--em-background-tertiary-2) 40%, transparent);
+  --glass-src-background-tertiary-2: var(--em-background-tertiary-2);
+  --background-tertiary-3: color-mix(in oklab, var(--em-background-tertiary-3) 50%, transparent);
+  --glass-src-background-tertiary-3: var(--em-background-tertiary-3);
+  --background-quaternary: color-mix(in oklab, var(--em-background-quaternary) 25%, transparent);
+  --glass-src-background-quaternary: var(--em-background-quaternary);
+  --background-quaternary-1: color-mix(
+    in oklab,
+    var(--em-background-quaternary-1) 30%,
+    transparent
+  );
+  --glass-src-background-quaternary-1: var(--em-background-quaternary-1);
+  --background-quaternary-2: color-mix(
+    in oklab,
+    var(--em-background-quaternary-2) 40%,
+    transparent
+  );
+  --glass-src-background-quaternary-2: var(--em-background-quaternary-2);
+  --background-quaternary-3: color-mix(
+    in oklab,
+    var(--em-background-quaternary-3) 50%,
+    transparent
+  );
+  --glass-src-background-quaternary-3: var(--em-background-quaternary-3);
+  --monaco-bg: color-mix(in oklab, var(--em-surface-paper) 40%, transparent);
+  --xterm-bg: color-mix(in oklab, var(--em-surface-paper) 40%, transparent);
+  --chat-bg: color-mix(in oklab, var(--em-surface-paper) 40%, transparent);
+  /* Captured here so body can re-declare the same names with alpha without a var() cycle. */
+  --glass-src-surface-sunken: var(--em-surface-sunken);
+  --glass-src-surface-sunken-hover: var(--em-surface-sunken-hover);
+  --glass-src-surface-sunken-selected: var(--em-surface-sunken-selected);
+  --glass-src-surface-base: var(--em-surface-base);
+  --glass-src-surface-base-hover: var(--em-surface-base-hover);
+  --glass-src-surface-base-selected: var(--em-surface-base-selected);
+  --glass-src-surface-base-emphasis: var(--em-surface-base-emphasis);
+  --glass-src-surface-base-emphasis-hover: var(--em-surface-base-emphasis-hover);
+  --glass-src-surface-base-emphasis-selected: var(--em-surface-base-emphasis-selected);
+  --glass-src-surface-paper: var(--em-surface-paper);
+  --glass-src-surface-paper-hover: var(--em-surface-paper-hover);
+  --glass-src-surface-paper-selected: var(--em-surface-paper-selected);
+  --glass-src-surface-elevated: var(--em-surface-elevated);
+  --glass-src-surface-elevated-hover: var(--em-surface-elevated-hover);
+  --glass-src-surface-elevated-selected: var(--em-surface-elevated-selected);
+  --glass-src-surface-elevated-emphasis: var(--em-surface-elevated-emphasis);
+  --glass-src-surface-elevated-emphasis-hover: var(--em-surface-elevated-emphasis-hover);
+  --glass-src-surface-elevated-emphasis-selected: var(--em-surface-elevated-emphasis-selected);
+}
+
+.em-transparent body {
+  --em-background-1: color-mix(in oklab, var(--glass-src-background-1) 25%, transparent);
+  --em-background-2: color-mix(in oklab, var(--glass-src-background-2) 35%, transparent);
+  --em-background-3: color-mix(in oklab, var(--glass-src-background-3) 45%, transparent);
+  --em-background-secondary: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary) 25%,
+    transparent
+  );
+  --em-background-secondary-1: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary-1) 30%,
+    transparent
+  );
+  --em-background-secondary-2: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary-2) 40%,
+    transparent
+  );
+  --em-background-secondary-3: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary-3) 50%,
+    transparent
+  );
+  --em-background-tertiary: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary) 25%,
+    transparent
+  );
+  --em-background-tertiary-1: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary-1) 30%,
+    transparent
+  );
+  --em-background-tertiary-2: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary-2) 40%,
+    transparent
+  );
+  --em-background-tertiary-3: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary-3) 50%,
+    transparent
+  );
+  --em-background-quaternary: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary) 25%,
+    transparent
+  );
+  --em-background-quaternary-1: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary-1) 30%,
+    transparent
+  );
+  --em-background-quaternary-2: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary-2) 40%,
+    transparent
+  );
+  --em-background-quaternary-3: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary-3) 50%,
+    transparent
+  );
+  background-color: color-mix(in oklab, var(--glass-src-background) 15%, transparent);
+  /* packages/ui paints page canvases (sticky page headers, layout fills) with --em-background
+     directly; clear it like --background above so they don't stack opaque over the tint. */
+  --em-background: transparent;
+  --em-surface-sunken: color-mix(in oklab, var(--glass-src-surface-sunken) 10%, transparent);
+  --em-surface-sunken-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-sunken-hover) 10%,
+    transparent
+  );
+  --em-surface-sunken-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-sunken-selected) 10%,
+    transparent
+  );
+  --em-surface-base: color-mix(in oklab, var(--glass-src-surface-base) 25%, transparent);
+  --em-surface-base-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-hover) 25%,
+    transparent
+  );
+  --em-surface-base-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-selected) 25%,
+    transparent
+  );
+  --em-surface-base-emphasis: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-emphasis) 25%,
+    transparent
+  );
+  --em-surface-base-emphasis-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-emphasis-hover) 25%,
+    transparent
+  );
+  --em-surface-base-emphasis-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-emphasis-selected) 25%,
+    transparent
+  );
+  --em-surface-paper: color-mix(in oklab, var(--glass-src-surface-paper) 30%, transparent);
+  --em-surface-paper-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-paper-hover) 30%,
+    transparent
+  );
+  --em-surface-paper-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-paper-selected) 30%,
+    transparent
+  );
+  --em-surface-elevated: color-mix(in oklab, var(--glass-src-surface-elevated) 60%, transparent);
+  --em-surface-elevated-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-hover) 60%,
+    transparent
+  );
+  --em-surface-elevated-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-selected) 60%,
+    transparent
+  );
+  --em-surface-elevated-emphasis: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-emphasis) 60%,
+    transparent
+  );
+  --em-surface-elevated-emphasis-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-emphasis-hover) 60%,
+    transparent
+  );
+  --em-surface-elevated-emphasis-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-emphasis-selected) 60%,
+    transparent
+  );
+  /* packages/ui's default cascade binding resolves on <html> (opaque); re-bind it here so
+     unscoped surfaces, inputs and popups pick up the alpha'd levels above. */
+  --em-surface: var(--em-surface-base);
+  --em-surface-hover: var(--em-surface-base-hover);
+  --em-surface-selected: var(--em-surface-base-selected);
+  --em-surface-emphasis: var(--em-surface-base-emphasis);
+  --em-surface-emphasis-hover: var(--em-surface-base-emphasis-hover);
+  --em-surface-emphasis-selected: var(--em-surface-base-emphasis-selected);
+  --em-surface-input: color-mix(in srgb, var(--em-surface) 94%, var(--em-foreground));
+}
+
+/* Light themes: dark text over a 15% tint lets the wallpaper show through as mid-grey and
+   contrast drops. A heavier canvas tint keeps the frost but restores legibility. */
+.em-transparent.emlight {
+  /* Dark text needs a heavier scrim than light text over the frost. */
+  --monaco-bg: color-mix(in oklab, var(--em-surface-paper) 80%, transparent);
+  --xterm-bg: color-mix(in oklab, var(--em-surface-paper) 80%, transparent);
+  --chat-bg: color-mix(in oklab, var(--em-surface-paper) 80%, transparent);
+  --background-1: color-mix(in oklab, var(--em-background-1) 70%, transparent);
+  --background-2: color-mix(in oklab, var(--em-background-2) 70%, transparent);
+  --background-3: color-mix(in oklab, var(--em-background-3) 70%, transparent);
+  --background-secondary: color-mix(in oklab, var(--em-background-secondary) 70%, transparent);
+  --background-secondary-1: color-mix(in oklab, var(--em-background-secondary-1) 70%, transparent);
+  --background-secondary-2: color-mix(in oklab, var(--em-background-secondary-2) 70%, transparent);
+  --background-secondary-3: color-mix(in oklab, var(--em-background-secondary-3) 70%, transparent);
+  --background-tertiary: color-mix(in oklab, var(--em-background-tertiary) 70%, transparent);
+  --background-tertiary-1: color-mix(in oklab, var(--em-background-tertiary-1) 70%, transparent);
+  --background-tertiary-2: color-mix(in oklab, var(--em-background-tertiary-2) 70%, transparent);
+  --background-tertiary-3: color-mix(in oklab, var(--em-background-tertiary-3) 70%, transparent);
+  --background-quaternary: color-mix(in oklab, var(--em-background-quaternary) 70%, transparent);
+  --background-quaternary-1: color-mix(
+    in oklab,
+    var(--em-background-quaternary-1) 70%,
+    transparent
+  );
+  --background-quaternary-2: color-mix(
+    in oklab,
+    var(--em-background-quaternary-2) 70%,
+    transparent
+  );
+  --background-quaternary-3: color-mix(
+    in oklab,
+    var(--em-background-quaternary-3) 70%,
+    transparent
+  );
+}
+
+.em-transparent.emlight body {
+  background-color: color-mix(in oklab, var(--glass-src-background) 70%, transparent);
+  /* Cards, rows, menus and popups get the same lift. */
+  --em-surface-sunken: color-mix(in oklab, var(--glass-src-surface-sunken) 40%, transparent);
+  --em-surface-sunken-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-sunken-hover) 40%,
+    transparent
+  );
+  --em-surface-sunken-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-sunken-selected) 40%,
+    transparent
+  );
+  --em-surface-base: color-mix(in oklab, var(--glass-src-surface-base) 70%, transparent);
+  --em-surface-base-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-hover) 70%,
+    transparent
+  );
+  --em-surface-base-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-selected) 70%,
+    transparent
+  );
+  --em-surface-base-emphasis: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-emphasis) 70%,
+    transparent
+  );
+  --em-surface-base-emphasis-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-emphasis-hover) 70%,
+    transparent
+  );
+  --em-surface-base-emphasis-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-base-emphasis-selected) 70%,
+    transparent
+  );
+  --em-surface-paper: color-mix(in oklab, var(--glass-src-surface-paper) 75%, transparent);
+  --em-surface-paper-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-paper-hover) 75%,
+    transparent
+  );
+  --em-surface-paper-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-paper-selected) 75%,
+    transparent
+  );
+  --em-surface-elevated: color-mix(in oklab, var(--glass-src-surface-elevated) 90%, transparent);
+  --em-surface-elevated-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-hover) 90%,
+    transparent
+  );
+  --em-surface-elevated-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-selected) 90%,
+    transparent
+  );
+  --em-surface-elevated-emphasis: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-emphasis) 90%,
+    transparent
+  );
+  --em-surface-elevated-emphasis-hover: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-emphasis-hover) 90%,
+    transparent
+  );
+  --em-surface-elevated-emphasis-selected: color-mix(
+    in oklab,
+    var(--glass-src-surface-elevated-emphasis-selected) 90%,
+    transparent
+  );
+  --em-background-1: color-mix(in oklab, var(--glass-src-background-1) 70%, transparent);
+  --em-background-2: color-mix(in oklab, var(--glass-src-background-2) 70%, transparent);
+  --em-background-3: color-mix(in oklab, var(--glass-src-background-3) 70%, transparent);
+  --em-background-secondary: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary) 70%,
+    transparent
+  );
+  --em-background-secondary-1: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary-1) 70%,
+    transparent
+  );
+  --em-background-secondary-2: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary-2) 70%,
+    transparent
+  );
+  --em-background-secondary-3: color-mix(
+    in oklab,
+    var(--glass-src-background-secondary-3) 70%,
+    transparent
+  );
+  --em-background-tertiary: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary) 70%,
+    transparent
+  );
+  --em-background-tertiary-1: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary-1) 70%,
+    transparent
+  );
+  --em-background-tertiary-2: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary-2) 70%,
+    transparent
+  );
+  --em-background-tertiary-3: color-mix(
+    in oklab,
+    var(--glass-src-background-tertiary-3) 70%,
+    transparent
+  );
+  --em-background-quaternary: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary) 70%,
+    transparent
+  );
+  --em-background-quaternary-1: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary-1) 70%,
+    transparent
+  );
+  --em-background-quaternary-2: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary-2) 70%,
+    transparent
+  );
+  --em-background-quaternary-3: color-mix(
+    in oklab,
+    var(--glass-src-background-quaternary-3) 70%,
+    transparent
+  );
+}
+
+/* Glass surfaces: sidebar rows and editor tabs are Tailwind, not a ui recipe, so they mirror `glassSurface`
+   (packages/ui/src/styles/recipes/glass.css.ts) here. */
+.em-glass .em-glass-item:is(:hover, [data-active='true']),
+.em-glass .em-glass-frame {
+  background-image:
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0) 42%),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--em-foreground) 7.5%, transparent),
+      color-mix(in oklab, var(--em-foreground) 4%, transparent),
+      color-mix(in oklab, var(--em-foreground) 2.5%, transparent)
+    );
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--em-foreground) 13%, transparent);
+}
+
+/* Tabs mark the active one with their underline; the glass edge ring would be a second marker. */
+.em-glass .em-glass-flat.em-glass-item:is(:hover, [data-active='true']) {
+  box-shadow: none;
+}
+
+/* Active toggle inside the titlebar bar: the frame already tints the background, so the default
+   selected surface barely shows on top of it. */
+.em-glass-frame :is([data-pressed], [aria-pressed='true']) {
+  background-color: color-mix(in oklab, var(--em-foreground) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--em-foreground) 16%, transparent);
+  color: var(--em-foreground);
+}
+
+/* Modals sit on the elevated surface, which in several themes is the same color as --border, so
+   field outlines vanish. A foreground-mixed edge reads on any theme and either window mode. */
+/* Sticky controls drawn over scrolling content (tab bar "+"): with a see-through window the
+   translucent surface lets the tabs underneath show through, so cover them like a popup. */
+.em-transparent .em-sticky-cover {
+  background-color: color-mix(in oklab, var(--glass-src-surface-base) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.em-modal {
+  --border: color-mix(in oklab, var(--em-foreground) 13%, transparent);
+  /* Same color as the canvas so the modal does not float as a lighter slab. */
+  background-color: var(--em-background);
+}
+
+/* See-through window: the modal keeps a near-solid panel and blurs what is behind it, so the
+   page under it never bleeds through the text. */
+.em-transparent .em-modal {
+  background-color: color-mix(in oklab, var(--glass-src-background) 88%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+}

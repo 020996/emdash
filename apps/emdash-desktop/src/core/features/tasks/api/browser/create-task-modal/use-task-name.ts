@@ -11,6 +11,8 @@ export type TaskNameState = {
   handleTaskNameChange: (value: string) => void;
   showSlugHint: boolean;
   isPending: boolean;
+  /** The name is fixed by the context (checked-out branch) and shows `placeholder` as its value. */
+  readOnly?: boolean;
 };
 
 export function useTaskName(opts?: {

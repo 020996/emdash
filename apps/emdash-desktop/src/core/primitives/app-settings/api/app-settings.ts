@@ -68,6 +68,8 @@ export type InterfaceSettings = {
   showLeftSidebarTimestamps: boolean;
   hideContextBar: boolean;
   fileIconTheme: FileIconTheme;
+  transparentWindow: boolean;
+  glassSurfaces: boolean;
 };
 
 export const FILE_ICON_THEMES = ['devicon', 'material', 'vscode', 'catppuccin'] as const;

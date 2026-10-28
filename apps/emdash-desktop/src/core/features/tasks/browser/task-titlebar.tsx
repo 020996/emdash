@@ -317,7 +317,7 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
           <ActivityBadge projectId={projectId} taskId={taskId} />
           <PreviewServerPills />
           {/* One shared surface so the run, open-in, terminal and sidebar toggles read as one bar. */}
-          <div className="flex items-center gap-0.5 rounded-md bg-(--em-surface) p-0.5">
+          <div className="em-glass-frame flex items-center gap-0.5 rounded-md bg-(--em-surface) p-0.5 ring-1 ring-border ring-inset">
             <FlutterRunControls />
             <OpenInMenu
               path={workspace.path}
@@ -332,7 +332,12 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
                   size="sm"
                   icon
                   pressed={taskView.isTerminalDrawerOpen}
-                  onPressedChange={() => taskView.chrome.commands.toggleTerminalDrawer()}
+                  // Same as task.toggleTerminalDrawer: an empty drawer opens with a new terminal.
+                  onPressedChange={() =>
+                    !taskView.isTerminalDrawerOpen && taskView.terminalTabs.tabs.length === 0
+                      ? void taskView.openNewTerminal()
+                      : taskView.chrome.commands.toggleTerminalDrawer()
+                  }
                 >
                   <Terminal className="size-3.5" />
                 </Toggle>
@@ -351,7 +356,7 @@ const ActiveTaskTitlebar = observer(function ActiveTaskTitlebar({
                   taskView.chrome.commands.openSidebarTab(tab as SidebarTab);
                 }
               }}
-              className="bg-transparent! p-0!"
+              className="bg-transparent! bg-none! p-0! shadow-none!"
             >
               <Tooltip.Root>
                 <Tooltip.Trigger

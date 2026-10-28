@@ -1,6 +1,7 @@
 import { style } from '@vanilla-extract/css';
 import { recipe } from '@vanilla-extract/recipes';
 import type { RecipeVariants } from '@vanilla-extract/recipes';
+import { GLASS, glassSurface } from '../../../styles/recipes/glass.css';
 import { vars } from '@theme/core/contract/contract.css';
 import { tokenVars } from '@theme/tokens.css';
 
@@ -82,6 +83,7 @@ export const navItem = recipe({
         backgroundColor: vars.background3,
         color: vars.foreground,
         selectors: {
+          [GLASS]: glassSurface,
           '&:hover': {
             backgroundColor: vars.background3,
             color: vars.foreground,

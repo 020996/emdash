@@ -1,4 +1,5 @@
 import { globalStyle, style } from '@vanilla-extract/css';
+import { TRANSPARENT, transparentPopup } from '../../../styles/recipes/glass.css';
 import { kfPopupIn } from '@styles/effects/animations.css';
 import { vars } from '@theme/core/contract/contract.css';
 import { tokenVars } from '@theme/tokens.css';
@@ -20,6 +21,7 @@ export const popupRoot = style({
   boxShadow: `${vars.shadowSm}, 0 0 0 1px color-mix(in srgb, ${vars.foreground} 10%, transparent)`,
   animation: `${kfPopupIn} 100ms both`,
 });
+globalStyle(`${TRANSPARENT} ${popupRoot}`, transparentPopup);
 
 export const popupRootWide = style({
   width: 'min(30rem, var(--available-width))',

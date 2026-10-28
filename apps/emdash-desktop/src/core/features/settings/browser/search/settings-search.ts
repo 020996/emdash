@@ -103,13 +103,6 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     description: 'Show system banners when agents need attention or finish.',
     keywords: ['banner', 'system'],
   },
-  {
-    id: 'emdash-account',
-    label: 'Emdash Account',
-    tab: 'general',
-    description: 'Create an Emdash account to automatically connect GitHub using OAuth2.',
-    keywords: ['sign in', 'sign out', 'login', 'logout', 'oauth'],
-  },
 
   // Agents
   {
@@ -239,6 +232,20 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     tab: 'interface',
     description: 'Icons for files and folders.',
     keywords: ['icons', 'material', 'vscode-icons', 'catppuccin', 'devicon', 'appearance'],
+  },
+  {
+    id: 'transparent-window',
+    label: 'Transparent window',
+    tab: 'interface',
+    description: 'See the desktop blurred behind the window.',
+    keywords: ['glass', 'vibrancy', 'blur', 'translucent', 'appearance'],
+  },
+  {
+    id: 'glass-surfaces',
+    label: 'Glass surfaces',
+    tab: 'interface',
+    description: 'Frosted glass cards, buttons, toggles and menus.',
+    keywords: ['glass', 'frosted', 'blur', 'appearance'],
   },
   {
     id: 'default-terminal-shell',

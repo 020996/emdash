@@ -163,8 +163,10 @@ export function useCreateTaskState(
     ? {
         ...taskName,
         placeholder: checkoutBranchName,
-        effectiveTaskName: taskName.taskName.trim() || checkoutBranchName,
+        // Checking out an existing branch: the task is named after it and cannot be renamed here.
+        effectiveTaskName: checkoutBranchName,
         isPending: false,
+        readOnly: true,
       }
     : taskName;
 

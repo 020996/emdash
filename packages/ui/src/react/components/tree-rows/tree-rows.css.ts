@@ -1,4 +1,5 @@
 import { keyframes, style } from '@vanilla-extract/css';
+import { GLASS, glassSurface } from '../../../styles/recipes/glass.css';
 import { vars } from '@theme/core/contract/contract.css';
 import { tokenVars } from '@theme/tokens.css';
 
@@ -51,6 +52,10 @@ export const row = style({
     },
     '&[data-pending]': {
       opacity: 0.62,
+    },
+    [`${GLASS}:is(:not(:disabled):hover, [data-opened], [data-selected])`]: {
+      ...glassSurface,
+      boxShadow: `inset 0 0 0 1px ${glassSurface.borderColor}`,
     },
   },
 });

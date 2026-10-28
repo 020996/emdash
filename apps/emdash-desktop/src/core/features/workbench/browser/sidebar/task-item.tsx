@@ -85,8 +85,8 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
 
   const workspaceStore = getTaskWorkspace(projectId, taskId);
   const git = getTaskGitCheckoutStore(projectId, taskId);
-  const showLineChanges = interfaceSettings?.showLeftSidebarLineChanges ?? true;
-  const showPrStatus = interfaceSettings?.showLeftSidebarPrStatus ?? true;
+  const showLineChanges = interfaceSettings?.showLeftSidebarLineChanges ?? false;
+  const showPrStatus = interfaceSettings?.showLeftSidebarPrStatus ?? false;
   const showTimestamps = interfaceSettings?.showLeftSidebarTimestamps ?? true;
   const branchName = git?.branchName ?? undefined;
   const handleReconnect =
@@ -107,7 +107,7 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
     >
       <SidebarMenuRow
         className={cn(
-          'group/row flex items-center justify-between px-1 py-1.5 h-8 gap-1',
+          'group/row flex items-center justify-between px-1 py-1.5 gap-1',
           rowVariant === 'pinned' ? 'pl-2' : 'pl-8'
         )}
         isActive={isActive}
@@ -127,7 +127,7 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
             {displayName}
           </span>
         </SidebarMenuAction>
-        <div className="ml-2 flex shrink-0 items-center justify-end gap-1.5">
+        <div className="ml-2 flex shrink-0 items-center justify-end gap-1.5 pr-2">
           {showLineChanges && <TaskGitDiffStats task={task} />}
           {showPrStatus && <RenderPrBadge task={task} />}
           <TaskSidebarTrailingSlot task={task} showTimestamp={showTimestamps} />

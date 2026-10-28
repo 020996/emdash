@@ -109,7 +109,7 @@ export const ConversationsPanel = observer(function ConversationsPanel() {
   }, [isActive, activeConversation, activeConversationSeen]);
 
   const onInterruptPress = activeConversation ? () => activeConversation.clearWorking() : undefined;
-  const hideContextBarTrigger = interfaceSettings?.hideContextBar ?? false;
+  const hideContextBarTrigger = interfaceSettings?.hideContextBar ?? true;
 
   // Measure the rendered height of the ContextBar so the PTY controller can
   // subtract it from the available terminal height. The ContextBar renders null

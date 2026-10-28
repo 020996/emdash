@@ -1,4 +1,5 @@
 import { globalStyle, style } from '@vanilla-extract/css';
+import { TRANSPARENT, transparentPopup } from '../../../styles/recipes/glass.css';
 import {
   kfPopupIn,
   kfPopupOut,
@@ -69,6 +70,7 @@ export const selectContent = style({
     '&[data-closed]': { animation: `${kfPopupOut} 100ms both` },
   },
 });
+globalStyle(`${TRANSPARENT} ${selectContent}`, transparentPopup);
 
 export const selectLabel = style({
   paddingLeft: '0.5rem',

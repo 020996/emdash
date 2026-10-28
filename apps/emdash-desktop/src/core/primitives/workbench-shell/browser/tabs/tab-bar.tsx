@@ -6,7 +6,14 @@ import { PaneDropZone } from './tab-bar/draggable-tab';
 export const TabBar = observer(function TabBar({ trailingSlot }: { trailingSlot?: ReactNode }) {
   const { paneId, pane } = usePaneContext();
 
-  const resolvedTabs = pane.resolvedTabs;
+  const resolvedTabs = pane.resolvedTabs.filter((tab) => pane.registry.has(tab.kind));
+  // Only the first pinned-kind tab stays fixed; more would crowd out the scrolling tabs.
+  const pinnedTab = resolvedTabs.find((tab) => pane.registry.get(tab.kind).pinnedInTabBar);
+  const scrollingTabs = resolvedTabs.filter((tab) => tab !== pinnedTab);
+  const renderTab = (tab: (typeof resolvedTabs)[number]) => {
+    const TabItemComponent = pane.registry.get(tab.kind).TabBarItem;
+    return <TabItemComponent key={tab.tabId} tab={tab} host={pane} ctx={pane.ctx} />;
+  };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -31,18 +38,17 @@ export const TabBar = observer(function TabBar({ trailingSlot }: { trailingSlot?
       className="task-tab-bar surface-paper flex h-[41px] shrink-0 items-center border-b border-border bg-(--em-surface)"
       onClick={() => pane.focusActiveContent()}
     >
+      {pinnedTab && (
+        <div className="flex h-full shrink-0 border-r border-border">{renderTab(pinnedTab)}</div>
+      )}
       <div
         ref={scrollContainerRef}
-        className="flex h-full w-full overflow-x-auto overflow-y-hidden"
+        // Scrolls by trackpad/shift-wheel; a visible bar under the tabs reads as a second underline.
+        className="flex h-full w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
       >
-        {resolvedTabs.map((tab) => {
-          if (!pane.registry.has(tab.kind)) return null;
-          const def = pane.registry.get(tab.kind);
-          const TabItemComponent = def.TabBarItem;
-          return <TabItemComponent key={tab.tabId} tab={tab} host={pane} ctx={pane.ctx} />;
-        })}
+        {scrollingTabs.map(renderTab)}
         {trailingSlot && (
-          <div className="sticky right-0 z-20 flex h-full shrink-0 items-center bg-(--em-surface) px-1">
+          <div className="em-sticky-cover sticky right-0 z-20 flex h-full shrink-0 items-center bg-(--em-surface) px-1">
             {trailingSlot}
           </div>
         )}

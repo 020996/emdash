@@ -3,6 +3,10 @@ import { EmptyState } from '@emdash/ui/react/components';
 import { Button } from '@emdash/ui/react/primitives';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useRef, useState } from 'react';
+import {
+  ProblemsPanel,
+  useTaskProblems,
+} from '@core/features/editor/contributions/browser/problems/problems-panel';
 import { useIsActiveTask } from '@core/features/tasks/api/browser/hooks/use-is-active-task';
 import { useTaskViewContext } from '@core/features/tasks/contributions/browser/task-view-context';
 import { useTerminalShellAvailability } from '@core/features/terminals/api/browser/use-terminal-shell-availability';
@@ -34,6 +38,7 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
   const terminalTabView = taskView.terminalTabs;
   const lifecycleScriptsMgr = workspace.get(lifecycleScriptsStoreToken);
   const isActive = useIsActiveTask(taskId);
+  const problemFiles = useTaskProblems(projectId, taskId);
   const remoteConnectionId = workspace.sshConnectionId;
   const liveActionsDisabled = terminalMgr.hostAccess?.liveAction.kind === 'disabled';
   const liveActionDisabledReason = projectAvailabilityUi.getLiveActionDisabledReason(projectId);
@@ -162,6 +167,7 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
 
   const handleModeChange = (nextMode: TerminalDrawerMode) => {
     setMode(nextMode);
+    if (nextMode === 'problems') return;
 
     if (nextMode === 'terminals') {
       const terminalId = terminalTabView.activeTabId ?? terminalTabs[0]?.data.id;
@@ -247,24 +253,33 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
           onRemoveTerminal={(id) => terminalTabView.removeTab(id)}
           onRenameTerminal={(id, name) => void terminalMgr.renameTerminal(id, name)}
           onHoverTerminal={handleHoverTerminal}
+          problemCount={problemFiles.reduce((sum, file) => sum + file.problems.length, 0)}
         />
-        <TerminalPtyContent
-          className="min-h-0 flex-1"
-          activeSession={activeSession}
-          allSessionIds={allSessionIds}
-          autoFocus={shouldAutoFocus}
-          emptyState={mode === 'scripts' ? scriptsEmptyState : terminalEmptyState}
-          unavailableState={
-            <EmptyState
-              bare
-              label="Terminal unavailable"
-              description={liveActionDisabledReason ?? 'Live actions are unavailable.'}
-            />
-          }
-          disabledReason={mode === 'terminals' ? liveActionDisabledReason : null}
-          workspaceId={workspaceId}
-          terminalPaddingBottom={0}
-        />
+        <div className="relative min-h-0 flex-1">
+          <TerminalPtyContent
+            className={mode === 'problems' ? 'invisible h-full' : 'h-full'}
+            activeSession={activeSession}
+            allSessionIds={allSessionIds}
+            autoFocus={shouldAutoFocus}
+            emptyState={mode === 'scripts' ? scriptsEmptyState : terminalEmptyState}
+            unavailableState={
+              <EmptyState
+                bare
+                label="Terminal unavailable"
+                description={liveActionDisabledReason ?? 'Live actions are unavailable.'}
+              />
+            }
+            disabledReason={mode === 'terminals' ? liveActionDisabledReason : null}
+            workspaceId={workspaceId}
+            terminalPaddingBottom={0}
+          />
+          {/* Terminals stay mounted (hidden, not unmounted) so they keep their size and sessions. */}
+          {mode === 'problems' && (
+            <div className="absolute inset-0">
+              <ProblemsPanel files={problemFiles} context={{ projectId, taskId }} />
+            </div>
+          )}
+        </div>
       </div>
     </ViewScopeInstanceProvider>
   );

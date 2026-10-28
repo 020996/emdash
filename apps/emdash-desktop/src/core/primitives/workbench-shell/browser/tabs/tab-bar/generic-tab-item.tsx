@@ -132,15 +132,17 @@ export const GenericTabItem = observer(function GenericTabItem({
           }}
           title={fullTitle}
           data-tabid={tab.tabId}
+          data-active={tab.isActive || undefined}
           className={cn(
-            'group relative flex h-full cursor-pointer flex-col text-sm',
+            'em-glass-item em-glass-flat group relative flex h-full cursor-pointer flex-col text-sm',
             tab.isActive ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
           )}
         >
           {tab.isActive && (
             <div
               className={cn(
-                'absolute inset-x-0 bottom-0 h-0.5',
+                // Glass on: the active tab's glass fill is the marker, so the underline goes.
+                'absolute inset-x-0 bottom-0 h-0.5 in-[.em-glass]:hidden',
                 isFocusedPane ? 'bg-(--primary-button-background)' : 'bg-border-1'
               )}
             />

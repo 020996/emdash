@@ -33,7 +33,9 @@ const SYNTAX_TOKENS: Array<[string, string]> = [
  */
 function readMonacoVarsForTheme(cssClass: string): { colors: MonacoColors; rules: MonacoRule[] } {
   const el = document.createElement('div');
-  el.className = cssClass;
+  // The see-through window gives the editor background alpha (index.css).
+  const transparent = document.documentElement.classList.contains('em-transparent');
+  el.className = transparent ? `${cssClass} em-transparent` : cssClass;
   el.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;';
   document.body.appendChild(el);
   const style = getComputedStyle(el);
@@ -67,6 +69,9 @@ function readMonacoVarsForTheme(cssClass: string): { colors: MonacoColors; rules
       colors[monacoToken] = cssColorToHex(value);
     }
   }
+  // Drop the black drop shadow under the top edge / sticky-scroll header while scrolled.
+  colors['scrollbar.shadow'] = '#00000000';
+  colors['editorStickyScroll.shadow'] = '#00000000';
 
   const rules: MonacoRule[] = [];
   for (const [role, token] of SYNTAX_TOKENS) {

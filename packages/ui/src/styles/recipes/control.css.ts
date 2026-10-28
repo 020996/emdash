@@ -11,6 +11,7 @@
 import { globalStyle, style } from '@vanilla-extract/css';
 import { recipe } from '@vanilla-extract/recipes';
 import type { RecipeVariants } from '@vanilla-extract/recipes';
+import { GLASS, glassSurface } from './glass.css';
 import { vars } from '@theme/core/contract/contract.css';
 import { tokenVars } from '@theme/tokens.css';
 
@@ -22,7 +23,8 @@ const focusRing = {
 const secondaryBackground = `color-mix(in srgb, ${vars.foreground} 6%, transparent)`;
 const secondaryBackgroundHover = `color-mix(in srgb, ${vars.foreground} 9%, transparent)`;
 const secondaryBackgroundSelected = `color-mix(in srgb, ${vars.foreground} 12%, transparent)`;
-const primaryButtonBackgroundPressed = `color-mix(in srgb, black 10%, ${vars.primaryButtonBackground})`;
+const primaryTint = (percent: number) =>
+  `color-mix(in oklab, ${vars.primaryButtonBackground} ${percent}%, transparent)`;
 
 const inlineControlSize = {
   height: 'auto',
@@ -100,20 +102,18 @@ export const controlVariants = recipe({
           },
         },
       },
+      // Accent tint (clean_my_mobile accentTint 30% + accentBorder) instead of a solid slab: keeps
+      // the theme accent hue, and text uses the theme foreground so light themes stay readable.
       primary: {
-        backgroundColor: vars.primaryButtonBackground,
-        color: vars.primaryButtonForeground,
-        borderColor: vars.primaryButtonBorder,
+        backgroundColor: primaryTint(30),
+        color: vars.foreground,
+        borderColor: primaryTint(60),
         selectors: {
-          '&:hover': { backgroundColor: vars.primaryButtonBackgroundHover },
-          '&:active': { backgroundColor: primaryButtonBackgroundPressed },
-          '&[aria-expanded="true"]': { backgroundColor: vars.primaryButtonBackgroundHover },
-          '&[aria-pressed="true"]': { backgroundColor: primaryButtonBackgroundPressed },
-          '&[aria-selected="true"]': { backgroundColor: primaryButtonBackgroundPressed },
-          '&[data-pressed]': { backgroundColor: primaryButtonBackgroundPressed },
-          '&[data-selected]': { backgroundColor: primaryButtonBackgroundPressed },
-          '&[data-popup-open]': { backgroundColor: vars.primaryButtonBackgroundHover },
-          '&[data-active="true"]': { backgroundColor: primaryButtonBackgroundPressed },
+          '&:is(:hover, [aria-expanded="true"], [data-popup-open])': {
+            backgroundColor: primaryTint(42),
+          },
+          '&:is(:active, [aria-pressed="true"], [aria-selected="true"], [data-pressed], [data-selected], [data-active="true"])':
+            { backgroundColor: primaryTint(50) },
         },
       },
       secondary: {
@@ -121,6 +121,7 @@ export const controlVariants = recipe({
         color: vars.foregroundMuted,
         borderColor: vars.border,
         selectors: {
+          [GLASS]: glassSurface,
           '&:hover': {
             backgroundColor: secondaryBackgroundHover,
             color: vars.foregroundMuted,

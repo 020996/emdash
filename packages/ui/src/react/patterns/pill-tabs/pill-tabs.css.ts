@@ -1,5 +1,6 @@
 import { style } from '@vanilla-extract/css';
 import { recipe } from '@vanilla-extract/recipes';
+import { GLASS, glassSurface } from '../../../styles/recipes/glass.css';
 import { svgContainer, svgSmSize } from '@styles/effects/svg-helpers.css';
 import { sx } from '@styles/utilities/sprinkles.css';
 import { vars } from '@theme/core/contract/contract.css';
@@ -82,6 +83,7 @@ export const tab = style([
         cursor: 'pointer',
         transition: 'background-color 150ms, border-color 150ms, color 150ms',
         selectors: {
+          [GLASS]: glassSurface,
           '&:hover:not([data-disabled]):not([aria-disabled="true"])': {
             backgroundColor: vars.surfaceElevatedHover,
           },

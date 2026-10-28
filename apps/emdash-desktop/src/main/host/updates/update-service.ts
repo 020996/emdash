@@ -5,7 +5,10 @@ import _electronUpdater, {
   type Logger as UpdaterLogger,
 } from 'electron-updater';
 import { updateEvents } from '@core/features/updates/node';
-import { IS_CANARY, UPDATE_CHANNEL } from '@core/primitives/app-identity/api/app-identity';
+import {
+  AUTO_UPDATE_ENABLED,
+  UPDATE_CHANNEL,
+} from '@core/primitives/app-identity/api/app-identity';
 import { resolveAppVersion } from '@main/core/app/utils';
 import { log } from '@main/lib/logger';
 import { formatUpdaterError, getUpdaterErrorDetails, sanitizeUpdaterLogArgs } from './utils';
@@ -17,7 +20,6 @@ function getAutoUpdater(): typeof _electronUpdater.autoUpdater {
   return autoUpdater;
 }
 
-const ALLOW_PRERELEASE = IS_CANARY;
 const ALLOW_DOWNGRADE = false;
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const STARTUP_DELAY_MS = 30 * 1000; // 30 seconds
@@ -72,7 +74,7 @@ export class UpdateService implements Disposable {
 
     this.updateState.currentVersion = await resolveAppVersion();
 
-    if (import.meta.env.DEV) return;
+    if (import.meta.env.DEV || !AUTO_UPDATE_ENABLED) return;
 
     this.setupAutoUpdater();
     this.setupEventListeners();
@@ -95,7 +97,7 @@ export class UpdateService implements Disposable {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.autoRunAppAfterInstall = true;
-    autoUpdater.allowPrerelease = ALLOW_PRERELEASE;
+    autoUpdater.allowPrerelease = false;
     autoUpdater.allowDowngrade = ALLOW_DOWNGRADE;
     autoUpdater.requestHeaders = { 'Cache-Control': 'no-cache' };
 

@@ -16,6 +16,11 @@ export const headerSticky = style({
   zIndex: 10,
   backgroundColor: vars.background,
   paddingTop: '2.5rem',
+  selectors: {
+    // See-through window clears the page background, so nothing could hide what scrolls under a
+    // sticky header (and a backdrop blur reads as a separate tinted block): let it scroll away.
+    ':where(.em-transparent) &': { position: 'static' },
+  },
 });
 
 // ── Title block ───────────────────────────────────────────────────────────────

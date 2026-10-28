@@ -61,6 +61,18 @@ const servers: Readonly<Record<string, HostServerProfile>> = {
     args: [],
     rootMarkers: ['Cargo.toml', 'rust-project.json'],
   },
+  dart: {
+    // Ships with the Dart and Flutter SDKs; pubspec.yaml marks the package root.
+    dependencyId: 'dart',
+    args: ['language-server', '--protocol=lsp'],
+    rootMarkers: ['pubspec.yaml'],
+    // Same as VS Code's Dart extension: TODO/FIXME comments appear in Problems.
+    configure: async () => ({
+      initializationOptions: { showTodos: true },
+      settings: { dart: { showTodos: true } },
+    }),
+  },
+  php: { dependencyId: 'intelephense', args: ['--stdio'], rootMarkers: ['composer.json'] },
   python: {
     dependencyId: 'pyright-langserver',
     args: ['--stdio'],

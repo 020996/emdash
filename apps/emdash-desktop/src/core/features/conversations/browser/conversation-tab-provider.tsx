@@ -36,6 +36,8 @@ export const conversationTabProvider: TabProvider<
 > = createTabProvider({
   kind: 'conversation',
   mount: 'single',
+  // Agents are the main surface: their tabs stay in view while file tabs scroll.
+  pinnedInTabBar: true,
   resourceKey: (s: ConversationState) => s.conversationId,
 
   onBeforeOpen: (args: ConversationOpenArgs): ConversationState | null => {

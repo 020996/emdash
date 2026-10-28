@@ -1,5 +1,6 @@
 import { WorkspaceIcon, type WorkspaceIconStatus } from '@emdash/ui/react/components';
 import { Button, DropdownMenu } from '@emdash/ui/react/primitives';
+import { card } from '@emdash/ui/styles/recipes/card';
 import { AlertTriangleIcon, EllipsisIcon, Trash2Icon } from 'lucide-react';
 import { useId } from 'react';
 import { formatBytes } from '@core/primitives/formatting/browser/formatBytes';
@@ -40,7 +41,7 @@ export function RepositoryHeader({
   const disabledReasonId = useId();
 
   return (
-    <section className="rounded-lg border border-border bg-background-secondary/40 px-4 py-3">
+    <section className={card({ level: 'base', radius: 'lg', padding: 'lg' })}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <WorkspaceIcon type="repository" status={healthStatus} size="2.75rem" />

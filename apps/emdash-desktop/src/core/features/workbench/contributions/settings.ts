@@ -35,6 +35,8 @@ const interfaceSettingsSchema = z.object({
   showLeftSidebarTimestamps: z.boolean(),
   hideContextBar: z.boolean(),
   fileIconTheme: z.enum(FILE_ICON_THEMES).catch('devicon'),
+  transparentWindow: z.boolean().catch(false),
+  glassSurfaces: z.boolean().catch(false),
 });
 
 const themeSchema = z
@@ -68,11 +70,13 @@ export const interfaceSettingsContribution = defineSettingsContribution<
     showTrayIcon: true,
     taskHoverAction: 'delete',
     autoRightSidebarBehavior: false,
-    showLeftSidebarLineChanges: true,
-    showLeftSidebarPrStatus: true,
+    showLeftSidebarLineChanges: false,
+    showLeftSidebarPrStatus: false,
     showLeftSidebarTimestamps: true,
-    hideContextBar: false,
+    hideContextBar: true,
     fileIconTheme: 'devicon',
+    transparentWindow: false,
+    glassSurfaces: false,
   },
 });
 

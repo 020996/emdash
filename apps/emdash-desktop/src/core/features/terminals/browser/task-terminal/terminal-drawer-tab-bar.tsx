@@ -22,7 +22,7 @@ import { projectAvailabilityUi } from '@core/manifests/browser/project-availabil
 import { BoundShortcut } from '@core/primitives/keybindings/browser/shortcut';
 import { cn } from '@core/primitives/styling/browser/cn';
 
-export type TerminalDrawerMode = 'terminals' | 'scripts';
+export type TerminalDrawerMode = 'terminals' | 'scripts' | 'problems';
 
 export type TerminalShellMenuState =
   | Readonly<{ kind: 'loading' }>
@@ -33,6 +33,8 @@ interface TerminalDrawerTabBarProps {
   isFocused: boolean;
   mode: TerminalDrawerMode;
   onModeChange: (mode: TerminalDrawerMode) => void;
+  /** Diagnostics count of the task's open files, shown as a badge on the Problems tab. */
+  problemCount: number;
   lifecycleScriptsMgr: LifecycleScriptsStore | null;
   activeScriptId: string | undefined;
   onSelectScript: (id: string) => void;
@@ -83,6 +85,7 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
   onHoverTerminal,
   projectId,
   liveActionsDisabled,
+  problemCount,
   className,
 }: TerminalDrawerTabBarProps) {
   const scripts = lifecycleScriptsMgr?.tabs ?? [];
@@ -94,7 +97,9 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
       <div
         className="flex h-full min-w-0 flex-1 items-center overflow-x-auto"
         role="tablist"
-        aria-label={mode === 'terminals' ? 'Terminals' : 'Scripts'}
+        aria-label={
+          mode === 'terminals' ? 'Terminals' : mode === 'scripts' ? 'Scripts' : 'Problems'
+        }
       >
         {mode === 'terminals' ? (
           <>
@@ -147,7 +152,7 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
               />
             </projectAvailabilityUi.LiveActionGuard>
           </>
-        ) : (
+        ) : mode === 'scripts' ? (
           scripts.map((script) => (
             <DrawerItemTab
               key={script.data.id}
@@ -187,13 +192,21 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
               }
             />
           ))
-        )}
+        ) : null}
       </div>
       <div className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
       <Tabs.Root value={mode} onValueChange={(value) => onModeChange(value as typeof mode)}>
         <Tabs.List>
           <Tabs.Tab value="terminals">Terminals</Tabs.Tab>
           <Tabs.Tab value="scripts">Scripts</Tabs.Tab>
+          <Tabs.Tab value="problems">
+            Problems
+            {problemCount > 0 && (
+              <span className="ml-1.5 rounded-full bg-background-3 px-1.5 text-xs tabular-nums">
+                {problemCount}
+              </span>
+            )}
+          </Tabs.Tab>
         </Tabs.List>
       </Tabs.Root>
     </div>

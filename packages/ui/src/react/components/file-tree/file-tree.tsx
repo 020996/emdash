@@ -342,7 +342,8 @@ function FileTreeInner(
       {rootMenuItems?.length ? (
         <ContextMenu.Root>
           <ContextMenu.Trigger {...bodyProps}>{bodyInnerContent}</ContextMenu.Trigger>
-          <ContextMenu.Content>
+          {/* No focus return: it would blur the new-file input the menu just opened. */}
+          <ContextMenu.Content finalFocus={false}>
             {rootMenuItems.map((item) => (
               <ContextMenu.Item
                 key={item.id}
@@ -494,7 +495,8 @@ function FileTreeInner(
     return (
       <ContextMenu.Root>
         <ContextMenu.Trigger className={styles.rowWrapper}>{content}</ContextMenu.Trigger>
-        <ContextMenu.Content>
+        {/* No focus return: it would blur the rename/new-file input the menu just opened. */}
+        <ContextMenu.Content finalFocus={false}>
           {menuItems.map((item) => (
             <ContextMenu.Item
               key={item.id}

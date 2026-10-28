@@ -7,6 +7,7 @@ export type SettingsRuntimePort = {
   setBrowserSettings(settings: AppSettings['browser']): void;
   setTheme(theme: AppSettings['theme']): void;
   setTrayVisible(visible: boolean): void;
+  setTransparentWindow(enabled: boolean): void;
 };
 
 async function reconcileSettingsRuntimeState(
@@ -24,7 +25,9 @@ async function reconcileSettingsRuntimeState(
     runtime.setBrowserSettings(await service.get('browser'));
   }
   if (key === 'interface') {
-    runtime.setTrayVisible((await service.get('interface')).showTrayIcon);
+    const settings = await service.get('interface');
+    runtime.setTrayVisible(settings.showTrayIcon);
+    runtime.setTransparentWindow(settings.transparentWindow);
   }
 }
 

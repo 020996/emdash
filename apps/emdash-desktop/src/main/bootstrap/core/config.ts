@@ -2,7 +2,6 @@ import { formatConfigError, parseConfig } from '@emdash/shared/config';
 import { z } from 'zod';
 import {
   APP_ID,
-  IS_CANARY,
   PRODUCT_NAME,
   UPDATE_CHANNEL,
   USER_DATA_DIR_NAME,
@@ -13,7 +12,6 @@ export type AppIdentityConfig = {
   productName: string;
   userDataDirName: string;
   updateChannel: string;
-  isCanary: boolean;
 };
 
 export type AppConfig = {
@@ -79,7 +77,6 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       productName: PRODUCT_NAME,
       userDataDirName: USER_DATA_DIR_NAME,
       updateChannel: UPDATE_CHANNEL,
-      isCanary: IS_CANARY,
     },
     isDev: import.meta.env.DEV,
     ...parsed.data,

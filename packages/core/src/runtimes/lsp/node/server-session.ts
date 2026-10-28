@@ -33,6 +33,8 @@ const diagnosticsSchema = z.object({
 });
 export type ProtocolDiagnostics = z.infer<typeof diagnosticsSchema>;
 
+const BACKGROUND_DIAGNOSTICS_FLUSH_MS = 250;
+
 export interface ServerSessionState {
   phase: 'starting' | 'ready' | 'failed';
   generation: string;
@@ -47,6 +49,7 @@ export interface ServerSessionState {
  * typing, closing a document, or cancelling another request.
  */
 export class LanguageServerSession {
+  private backgroundFlush?: ReturnType<typeof setTimeout>;
   current: ServerSessionState = {
     phase: 'starting',
     generation: '',
@@ -232,6 +235,7 @@ export class LanguageServerSession {
   dispose(): Promise<void> {
     if (this.disposePromise) return this.disposePromise;
     this.lifetime.abort(new Error('Language server session disposed'));
+    clearTimeout(this.backgroundFlush);
     this.disposePromise = (async () => {
       await this.starting?.catch(() => {});
       await this.queue.catch(() => {});
@@ -321,18 +325,28 @@ export class LanguageServerSession {
     if (!parsed.success) return;
     const diagnostics = parsed.data;
     const document = this.documents.get(diagnostics.uri);
-    if (
-      !document ||
-      (diagnostics.version !== undefined && diagnostics.version !== document.version)
-    )
+    // Files that are not open are kept too: workspace-analysing servers (Dart, rust-analyzer…)
+    // report the whole project, which the Problems view lists. Only open files carry a version.
+    if (document && diagnostics.version !== undefined && diagnostics.version !== document.version)
       return;
-    this.publish({
+    const state = {
       ...this.current,
       diagnostics: [
         ...this.current.diagnostics.filter((d) => d.uri !== diagnostics.uri),
         diagnostics,
       ],
-    });
+    };
+    if (document) {
+      this.publish(state);
+      return;
+    }
+    // A workspace scan reports thousands of files one notification at a time; sending the whole
+    // state for each would grow quadratically, so background files are batched.
+    this.current = state;
+    this.backgroundFlush ??= setTimeout(() => {
+      this.backgroundFlush = undefined;
+      if (!this.lifetime.signal.aborted) this.publish(this.current);
+    }, BACKGROUND_DIAGNOSTICS_FLUSH_MS);
   }
 
   private clearDiagnostics(uri: string): void {
@@ -343,6 +357,8 @@ export class LanguageServerSession {
   }
 
   private publish(state: ServerSessionState): void {
+    clearTimeout(this.backgroundFlush);
+    this.backgroundFlush = undefined;
     this.current = state;
     this.options.onState?.(state);
   }

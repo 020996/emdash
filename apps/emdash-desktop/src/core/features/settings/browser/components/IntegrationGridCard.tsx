@@ -1,4 +1,5 @@
 import { Tooltip } from '@emdash/ui/react/primitives';
+import { card } from '@emdash/ui/styles/recipes/card';
 import { CircleAlert } from 'lucide-react';
 import { IntegrationIcon } from '@core/features/integrations/contributions/browser/integration-icon';
 import { cn } from '@core/primitives/styling/browser/cn';
@@ -18,9 +19,11 @@ export function IntegrationGridCard({
       <button
         type="button"
         onClick={onSelect}
+        data-selected={selected || undefined}
+        // Same card surface as the rest of Settings, so themes and glass treat it alike.
         className={cn(
-          'group relative flex w-full items-center gap-4 rounded-lg border border-border bg-background-1 p-4 text-left text-card-foreground transition-all hover:bg-background-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-          selected && 'bg-background-2'
+          card({ level: 'base', radius: 'lg', padding: 'lg', interactive: true }),
+          'group relative flex w-full items-center gap-4 text-left text-card-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
         )}
       >
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-background-2 transition-colors group-hover:bg-background-3">

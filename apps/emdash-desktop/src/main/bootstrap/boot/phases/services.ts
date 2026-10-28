@@ -161,7 +161,7 @@ import { encryptedAppSecretsStore } from '@main/host/secrets/encrypted-app-secre
 import { toPlaintextSecretStore } from '@main/host/secrets/plaintext-secret-store';
 import { setTrayVisible } from '@main/host/tray';
 import { installUpdateNotifications } from '@main/host/updates/update-notifications';
-import { applyNativeTheme, isAppFocused } from '@main/host/window';
+import { applyNativeTheme, isAppFocused, setTransparentWindow } from '@main/host/window';
 import { log } from '@main/lib/logger';
 import { telemetryService } from '@main/lib/telemetry';
 import { appScope } from '../../core/app-scope';
@@ -695,8 +695,10 @@ export async function bootServices(
   });
   appScope.add(() => appService.dispose());
   await step('services:app-settings-init', () => appSettingsService.initialize());
-  setTrayVisible((await appSettingsService.get('interface')).showTrayIcon);
+  const interfaceSettings = await appSettingsService.get('interface');
+  setTrayVisible(interfaceSettings.showTrayIcon);
   applyNativeTheme(await appSettingsService.get('theme'));
+  setTransparentWindow(interfaceSettings.transparentWindow);
   await step('services:automations-init', () => automationsService.initialize());
   await step('services:notifications-init', () => notificationService.initialize());
   installUpdateNotifications(notificationService);

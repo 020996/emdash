@@ -87,6 +87,22 @@ export const desktopHostContract = defineContract({
     input: z.object({ workspaceId: z.string(), relativePath: z.string() }),
     output: z.custom<ActionResult>(),
   }),
+  clipboardWriteFiles: procedure({
+    input: z.object({ paths: z.array(z.string()) }),
+    output: z.custom<ActionResult>(),
+  }),
+  clipboardReadFiles: procedure({
+    input: z.void(),
+    output: z.custom<string[]>(),
+  }),
+  pasteFilesIntoWorkspace: procedure({
+    input: z.object({
+      workspaceId: z.string(),
+      relativeDir: z.string(),
+      sources: z.array(z.string()),
+    }),
+    output: z.custom<ActionResult>(),
+  }),
   clipboardWriteText: procedure({
     input: z.object({ text: z.string() }),
     output: z.custom<ActionResult>(),
