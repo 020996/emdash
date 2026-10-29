@@ -40,6 +40,9 @@ function makeLoadingManager(terminals: TerminalManagerStore['terminals']): Termi
   }) as unknown as TerminalManagerStore & { isLoaded: boolean };
 }
 
+/** Lets the handle's `ready` resolve so the store starts syncing. */
+const hydrated = () => new Promise((resolve) => setTimeout(resolve));
+
 function makeHandle(
   initial: Partial<TaskTerminalSelectionState> = {}
 ): MementoHandle<TaskTerminalSelectionState> {
@@ -87,7 +90,20 @@ describe('TerminalTabViewStore', () => {
     registryEntries().delete('task-1');
   });
 
-  it('syncs terminal ids when the terminal manager becomes available after construction', () => {
+  it('does not overwrite the stored selection before it hydrates', () => {
+    const terminals = observable.map<string, TerminalStore>();
+    terminals.set('terminal-1', makeTerminal('terminal-1', 'Terminal 1'));
+    registryEntries().set('task-1', makeManager(terminals));
+    const handle = makeHandle({ tabOrder: ['stored'] });
+    Object.defineProperty(handle, 'ready', { value: new Promise<void>(() => {}) });
+
+    const view = new TerminalTabViewStore(handle, () => terminalRegistry.get('task-1') ?? null);
+
+    expect(view.tabOrder).toEqual(['stored']);
+    view.dispose();
+  });
+
+  it('syncs terminal ids when the terminal manager becomes available after construction', async () => {
     const terminals = observable.map<string, TerminalStore>();
     const view = new TerminalTabViewStore(
       makeHandle(),
@@ -99,12 +115,14 @@ describe('TerminalTabViewStore', () => {
       terminals.set('terminal-2', makeTerminal('terminal-2', 'Terminal 2'));
     });
 
+    await hydrated();
+
     expect(view.tabOrder).toEqual(['terminal-2']);
 
     view.dispose();
   });
 
-  it('reconciles restored snapshots with already-loaded terminal records', () => {
+  it('reconciles restored snapshots with already-loaded terminal records', async () => {
     const terminals = observable.map<string, TerminalStore>();
     terminals.set('terminal-1', makeTerminal('terminal-1', 'Terminal 1'));
     terminals.set('terminal-2', makeTerminal('terminal-2', 'Terminal 2'));
@@ -118,13 +136,15 @@ describe('TerminalTabViewStore', () => {
       () => terminalRegistry.get('task-1') ?? null
     );
 
+    await hydrated();
+
     expect(view.tabOrder).toEqual(['terminal-2', 'terminal-1']);
     expect(view.activeTabId).toBe('terminal-2');
 
     view.dispose();
   });
 
-  it('falls back to the first live terminal when the restored active terminal is stale', () => {
+  it('falls back to the first live terminal when the restored active terminal is stale', async () => {
     const terminals = observable.map<string, TerminalStore>();
     terminals.set('terminal-1', makeTerminal('terminal-1', 'Terminal 1'));
     terminals.set('terminal-2', makeTerminal('terminal-2', 'Terminal 2'));
@@ -138,13 +158,15 @@ describe('TerminalTabViewStore', () => {
       () => terminalRegistry.get('task-1') ?? null
     );
 
+    await hydrated();
+
     expect(view.tabOrder).toEqual(['terminal-1', 'terminal-2']);
     expect(view.activeTabId).toBe('terminal-1');
 
     view.dispose();
   });
 
-  it('reconciles a restored snapshot after the terminal manager loads later', () => {
+  it('reconciles a restored snapshot after the terminal manager loads later', async () => {
     const view = new TerminalTabViewStore(
       makeHandle({
         tabOrder: ['deleted-terminal'],
@@ -160,13 +182,15 @@ describe('TerminalTabViewStore', () => {
       registryEntries().set('task-1', makeManager(terminals));
     });
 
+    await hydrated();
+
     expect(view.tabOrder).toEqual(['terminal-1']);
     expect(view.activeTabId).toBe('terminal-1');
 
     view.dispose();
   });
 
-  it('clears stale restored ids when an empty terminal list finishes loading', () => {
+  it('clears stale restored ids when an empty terminal list finishes loading', async () => {
     const terminals = observable.map<string, TerminalStore>();
     const manager = makeLoadingManager(terminals);
     registryEntries().set('task-1', manager);
@@ -182,6 +206,8 @@ describe('TerminalTabViewStore', () => {
     runInAction(() => {
       manager.isLoaded = true;
     });
+
+    await hydrated();
 
     expect(view.tabOrder).toEqual([]);
     expect(view.activeTabId).toBeUndefined();

@@ -60,7 +60,7 @@ export type DesktopHostEvent =
   | {
       type: 'terminal-context-menu-action';
       requestId: string;
-      action: 'paste' | 'select-all' | 'clear';
+      action: 'paste' | 'select-all' | 'clear' | 'unsplit';
     };
 
 type ActionResult = { success: boolean; error?: string };
@@ -124,6 +124,7 @@ export const desktopHostContract = defineContract({
       requestId: z.string(),
       selectionText: z.string().nullable().optional(),
       linkText: z.string().nullable().optional(),
+      canUnsplit: z.boolean().optional(),
       x: z.number(),
       y: z.number(),
     }),

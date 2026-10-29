@@ -1,9 +1,9 @@
 import { useId } from 'react';
 
-export const NATURAL_WIDTH = 292;
+export const NATURAL_WIDTH = 58;
 export const NATURAL_HEIGHT = 70;
 
-/** Full-color agent mark plus the wordmark, which takes the parent <svg>'s fill. */
+/** Full-color agent mark (icon only, no wordmark). */
 export function LogoShapes() {
   const gradientId = `logo-mark-${useId().replace(/:/g, '')}`;
   return (
@@ -36,16 +36,6 @@ export function LogoShapes() {
       <circle cx="29" cy="5" r="4.5" fill="#22c1c3" />
       <rect x="19.9" y="37.6" width="4.7" height="7.9" rx="2.3" fill="#7ef9ff" />
       <rect x="33.5" y="37.6" width="4.7" height="7.9" rx="2.3" fill="#7ef9ff" />
-      <text
-        x="72"
-        y="60"
-        fontSize="58"
-        fontWeight="700"
-        letterSpacing="-1.5"
-        fontFamily="-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif"
-      >
-        Emdash
-      </text>
     </>
   );
 }

@@ -20,6 +20,7 @@ export interface TerminalPtyContentProps {
   onFocusChange?: (focused: boolean) => void;
   onEnterPress?: () => void;
   onInterruptPress?: () => void;
+  onUnsplit?: () => void;
   mapShiftEnterToCtrlJ?: boolean;
   emptyState: ReactNode;
   unavailableState?: ReactNode;
@@ -37,6 +38,7 @@ export const TerminalPtyContent = observer(function TerminalPtyContent({
   onFocusChange,
   onEnterPress,
   onInterruptPress,
+  onUnsplit,
   mapShiftEnterToCtrlJ,
   emptyState,
   unavailableState,
@@ -158,6 +160,7 @@ export const TerminalPtyContent = observer(function TerminalPtyContent({
                       paddingBottom={terminalPaddingBottom}
                       onEnterPress={onEnterPress}
                       onInterruptPress={onInterruptPress}
+                      onUnsplit={onUnsplit}
                       mapShiftEnterToCtrlJ={mapShiftEnterToCtrlJ}
                       readOnly={Boolean(disabledReason)}
                       workspaceId={workspaceId}

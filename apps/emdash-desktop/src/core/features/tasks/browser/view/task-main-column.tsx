@@ -22,6 +22,7 @@ import {
 } from '@core/features/tasks/contributions/mementos';
 import {
   isTerminalDrawerDragData,
+  TERMINAL_SPLIT_DROP_PREFIX,
   type TerminalDrawerDragData,
 } from '@core/features/terminals/api/browser/task-terminal/terminal-drag';
 import { TerminalsPanel } from '@core/features/terminals/contributions/browser/task-terminal/terminal-panel';
@@ -92,6 +93,15 @@ export const TaskMainColumn = observer(function TaskMainColumn() {
     const terminalDragData = event.active.data.current;
     if (isTerminalDrawerDragData(terminalDragData)) {
       const overId = String(event.over.id);
+      if (overId.startsWith(TERMINAL_SPLIT_DROP_PREFIX)) {
+        const targetId = overId.slice(TERMINAL_SPLIT_DROP_PREFIX.length);
+        const { terminalId } = terminalDragData;
+        if (targetId === terminalId) return;
+        taskView.terminalTabs.joinSplit(targetId, terminalId);
+        taskView.terminalTabs.setActiveTab(terminalId);
+        taskView.setTerminalDrawerActiveItem({ kind: 'terminal', id: terminalId });
+        return;
+      }
       const destination = paneLayout.materializeDropDestination(overId);
       if (!destination) return;
       paneLayout.setActiveGroup(destination.paneId);

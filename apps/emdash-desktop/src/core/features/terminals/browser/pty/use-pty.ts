@@ -56,6 +56,8 @@ export interface UsePtyOptions {
   onFirstMessage?: (message: string) => void;
   onEnterPress?: (message: string) => void;
   onInterruptPress?: () => void;
+  /** Adds "Unsplit Terminal" to the context menu (drawer split panes). */
+  onUnsplit?: () => void;
   onPasteFromClipboard?: PasteFromClipboardHandler;
 }
 
@@ -103,6 +105,7 @@ export function usePty(
     onFirstMessage,
     onEnterPress,
     onInterruptPress,
+    onUnsplit,
     onPasteFromClipboard,
   } = options;
 
@@ -115,6 +118,8 @@ export function usePty(
   onEnterPressRef.current = onEnterPress;
   const onInterruptPressRef = useRef(onInterruptPress);
   onInterruptPressRef.current = onInterruptPress;
+  const onUnsplitRef = useRef(onUnsplit);
+  onUnsplitRef.current = onUnsplit;
   const onPasteFromClipboardRef = useRef(onPasteFromClipboard);
   onPasteFromClipboardRef.current = onPasteFromClipboard;
   const themeRef = useRef(theme);
@@ -540,6 +545,7 @@ export function usePty(
             requestId,
             selectionText,
             linkText,
+            canUnsplit: Boolean(onUnsplitRef.current),
             x: event.clientX,
             y: event.clientY,
           })
@@ -561,6 +567,7 @@ export function usePty(
             if (event.action === 'paste') pasteFromClipboard();
             else if (event.action === 'select-all') terminal.selectAll();
             else if (event.action === 'clear') frontendPty.clear();
+            else if (event.action === 'unsplit') onUnsplitRef.current?.();
           },
           onGap: () => {},
         });

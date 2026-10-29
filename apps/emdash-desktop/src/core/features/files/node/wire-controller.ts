@@ -83,6 +83,10 @@ export function createFilesWireController(options: CreateFilesWireControllerOpti
         withFileRuntime(options, input.uri, (files, ref) =>
           files.fs.createDirectory({ path: ref.path }, callOptions(meta))
         ),
+      listDirectory: (input, meta) =>
+        withFileRuntime(options, input.uri, (files, ref) =>
+          files.fs.listDirectory({ path: ref.path }, callOptions(meta))
+        ),
       rename: (input, meta) =>
         withFromToRuntime(options, input, (files, from, to) =>
           files.fs.rename({ from, to }, callOptions(meta))

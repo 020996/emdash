@@ -63,6 +63,7 @@ type Props = {
   onFirstMessage?: (message: string) => void;
   onEnterPress?: (message: string) => void;
   onInterruptPress?: () => void;
+  onUnsplit?: () => void;
   onFind?: () => void;
 };
 
@@ -180,6 +181,7 @@ const PtyPaneInner = forwardRef<{ focus: () => void }, Props>(
       onFirstMessage,
       onEnterPress,
       onInterruptPress,
+      onUnsplit,
       onFind,
     },
     ref
@@ -290,6 +292,7 @@ const PtyPaneInner = forwardRef<{ focus: () => void }, Props>(
         onFirstMessage,
         onEnterPress,
         onInterruptPress,
+        onUnsplit,
         onPasteFromClipboard: readOnly ? undefined : handleSystemPaste,
       },
       containerRef

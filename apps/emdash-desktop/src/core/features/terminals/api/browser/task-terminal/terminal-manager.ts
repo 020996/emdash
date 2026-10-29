@@ -269,7 +269,8 @@ export class TerminalManagerStore implements Disposable {
         () => {
           const state = this.hostAccess?.state;
           return !state ? 0 : state.kind === 'ready' ? state.hostGeneration : undefined;
-        }
+        },
+        () => this.terminals.get(terminal.id)
       ),
       () => this.hostAccess?.liveAction.kind !== 'disabled'
     );
@@ -285,12 +286,43 @@ export class TerminalManagerStore implements Disposable {
   }
 }
 
+// ponytail: output-activity heuristic, not a process check. Silent commands read as idle and
+// only connected terminals report; a main-process child-process probe is the upgrade path.
+const BUSY_QUIET_MS = 5_000;
+/** Output must keep flowing this long to count; one-off redraws (prompt, resize) never do. */
+const BUSY_SUSTAIN_MS = 1_000;
+const INPUT_ECHO_MS = 500;
+
 export class TerminalStore {
   data: Terminal;
+  /** True while the terminal keeps printing output that isn't the echo of typing or a resize. */
+  isBusy = false;
+  private lastInputAt = 0;
+  private burstStartAt = 0;
+  private quietTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(terminal: Terminal) {
     this.data = terminal;
-    makeObservable(this, { data: observable });
+    makeObservable(this, { data: observable, isBusy: observable });
+  }
+
+  /** Typing or resizing: the shell's immediate echo/redraw is not a running command. */
+  noteInput(): void {
+    this.lastInputAt = Date.now();
+  }
+
+  noteOutput(): void {
+    const now = Date.now();
+    if (now - this.lastInputAt < INPUT_ECHO_MS) return;
+    if (!this.burstStartAt) this.burstStartAt = now;
+    if (!this.isBusy && now - this.burstStartAt >= BUSY_SUSTAIN_MS) {
+      runInAction(() => (this.isBusy = true));
+    }
+    clearTimeout(this.quietTimer);
+    this.quietTimer = setTimeout(() => {
+      this.burstStartAt = 0;
+      if (this.isBusy) runInAction(() => (this.isBusy = false));
+    }, BUSY_QUIET_MS);
   }
 }
 
@@ -300,7 +332,8 @@ function terminalErrorMessage(error: { type: string; message?: string }): string
 
 function createTerminalsConnector(
   key: () => Promise<TerminalRuntimeKey>,
-  generation: () => number | undefined
+  generation: () => number | undefined,
+  store: () => TerminalStore | undefined
 ): FrontendPtyConnector {
   let logBinding: ReplicaLog | null = null;
   let runtimePromise: Promise<TerminalsClient> | null = null;
@@ -312,8 +345,15 @@ function createTerminalsConnector(
   return {
     async connect(terminal: XtermTerminal) {
       const [terminalsRuntime, terminalKey] = await Promise.all([runtime(), key()]);
+      const sink = createXtermLogSink(terminal);
       logBinding = new ReplicaLog(terminalsRuntime.output.handle(terminalKey), {
-        store: createXtermLogSink(terminal),
+        store: {
+          reset: (data) => sink.reset(data),
+          append: (chunk) => {
+            sink.append(chunk);
+            store()?.noteOutput();
+          },
+        },
       });
       await logBinding.ready;
       return () => {
@@ -322,6 +362,7 @@ function createTerminalsConnector(
       };
     },
     sendInput(data: string) {
+      store()?.noteInput();
       const sentGeneration = generation();
       if (sentGeneration === undefined) return;
       void Promise.all([runtime(), key()])
@@ -340,6 +381,7 @@ function createTerminalsConnector(
         });
     },
     resize(cols: number, rows: number) {
+      store()?.noteInput();
       void Promise.all([runtime(), key()])
         .then(async ([terminalsRuntime, terminalKey]) => {
           const result = await terminalsRuntime.resize({ ...terminalKey, cols, rows });

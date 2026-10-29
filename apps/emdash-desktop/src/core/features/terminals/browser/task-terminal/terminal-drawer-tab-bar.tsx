@@ -3,9 +3,20 @@ import type {
   TerminalShellAvailability,
   TerminalShellId,
 } from '@emdash/core/primitives/terminal-shell/api';
-import { ScriptStatus, type ScriptStatusKind } from '@emdash/ui/react/components';
-import { Button, DropdownMenu, Tabs, Tooltip } from '@emdash/ui/react/primitives';
-import { ChevronDown, LoaderCircle, Pause, Play, Plus, RefreshCw, Terminal, X } from 'lucide-react';
+import { AgentStatus, ScriptStatus, type ScriptStatusKind } from '@emdash/ui/react/components';
+import { Button, ContextMenu, DropdownMenu, Tabs, Tooltip } from '@emdash/ui/react/primitives';
+import {
+  ChevronDown,
+  Columns2,
+  LoaderCircle,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Square,
+  Terminal,
+  X,
+} from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -48,6 +59,11 @@ interface TerminalDrawerTabBarProps {
   onRetryShellAvailability: () => void;
   onSelectTerminal: (id: string) => void;
   onAddTerminal: (shell?: TerminalShellId) => void;
+  onSplitTerminal: () => void;
+  /** Split group of a terminal (just `[id]` when unsplit). */
+  splitGroupOf: (id: string) => string[];
+  onJoinTerminal: (anchorId: string, otherId: string) => void;
+  onUnsplitTerminal: (id: string) => void;
   onRemoveTerminal: (id: string) => void;
   onRenameTerminal: (id: string, name: string) => void;
   onHoverTerminal?: (id: string) => void;
@@ -80,6 +96,10 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
   onRetryShellAvailability,
   onSelectTerminal,
   onAddTerminal,
+  onSplitTerminal,
+  splitGroupOf,
+  onJoinTerminal,
+  onUnsplitTerminal,
   onRemoveTerminal,
   onRenameTerminal,
   onHoverTerminal,
@@ -89,6 +109,15 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
   className,
 }: TerminalDrawerTabBarProps) {
   const scripts = lifecycleScriptsMgr?.tabs ?? [];
+  // One tab per split group (VS Code style), labelled by its first terminal.
+  const seen = new Set<string>();
+  const groupTabs: { terminal: TerminalStore; group: string[] }[] = [];
+  for (const terminal of terminals) {
+    if (seen.has(terminal.data.id)) continue;
+    const group = splitGroupOf(terminal.data.id);
+    for (const id of group) seen.add(id);
+    groupTabs.push({ terminal, group });
+  }
 
   return (
     <div
@@ -103,53 +132,133 @@ export const TerminalDrawerTabBar = observer(function TerminalDrawerTabBar({
       >
         {mode === 'terminals' ? (
           <>
-            {terminals.map((terminal) => (
-              <DrawerItemTab
-                key={terminal.data.id}
-                id={`terminal-drawer-${terminal.data.id}`}
-                icon={<Terminal className="size-3" />}
-                label={terminal.data.name}
-                isActive={activeTerminalId === terminal.data.id}
-                isFocused={isFocused}
-                dragData={{
-                  type: TERMINAL_DRAWER_DRAG_TYPE,
-                  terminalId: terminal.data.id,
-                  label: terminal.data.name,
-                }}
-                onSelect={() => onSelectTerminal(terminal.data.id)}
-                onRename={(name) => onRenameTerminal(terminal.data.id, name)}
-                onHover={onHoverTerminal ? () => onHoverTerminal(terminal.data.id) : undefined}
-                action={
-                  <Tooltip.Root>
-                    <Tooltip.Trigger
-                      render={
-                        <button
-                          type="button"
-                          aria-label={`Close ${terminal.data.name}`}
-                          className="mr-1 flex size-4 shrink-0 items-center justify-center rounded text-foreground-muted opacity-0 group-hover:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100"
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onRemoveTerminal(terminal.data.id);
-                          }}
-                        />
+            {groupTabs.map(({ terminal, group }) => {
+              const joinable = groupTabs.filter((tab) => tab.terminal !== terminal);
+              const isGroupActive =
+                activeTerminalId !== undefined && group.includes(activeTerminalId);
+              // Close/rename act on the focused pane when this group is showing.
+              const targetId = isGroupActive ? activeTerminalId : terminal.data.id;
+              return (
+                <ContextMenu.Root key={terminal.data.id}>
+                  <ContextMenu.Trigger className="flex h-full shrink-0">
+                    <DrawerItemTab
+                      id={`terminal-drawer-${terminal.data.id}`}
+                      icon={
+                        terminals.some((t) => group.includes(t.data.id) && t.isBusy) ? (
+                          <AgentStatus status="working" size="0.75rem" />
+                        ) : group.length > 1 ? (
+                          <Columns2 className="size-3" />
+                        ) : (
+                          <Terminal className="size-3" />
+                        )
                       }
+                      label={terminal.data.name}
+                      isActive={isGroupActive}
+                      isFocused={isFocused}
+                      dragData={{
+                        type: TERMINAL_DRAWER_DRAG_TYPE,
+                        terminalId: terminal.data.id,
+                        label: terminal.data.name,
+                      }}
+                      onSelect={() => {
+                        if (!isGroupActive) onSelectTerminal(terminal.data.id);
+                      }}
+                      onRename={(name) => onRenameTerminal(terminal.data.id, name)}
+                      onHover={
+                        onHoverTerminal ? () => onHoverTerminal(terminal.data.id) : undefined
+                      }
+                      action={
+                        <Tooltip.Root>
+                          <Tooltip.Trigger
+                            render={
+                              <button
+                                type="button"
+                                aria-label={`Close ${terminal.data.name}`}
+                                className="mr-1 flex size-4 shrink-0 items-center justify-center rounded text-foreground-muted opacity-0 group-hover:opacity-100 hover:bg-background hover:text-foreground focus-visible:opacity-100"
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onRemoveTerminal(targetId);
+                                }}
+                              />
+                            }
+                          >
+                            <X className="size-3" />
+                          </Tooltip.Trigger>
+                          <Tooltip.Content>Close terminal</Tooltip.Content>
+                        </Tooltip.Root>
+                      }
+                    />
+                  </ContextMenu.Trigger>
+                  <ContextMenu.Content>
+                    {group.length > 1 && (
+                      <ContextMenu.Item onClick={() => onUnsplitTerminal(targetId)}>
+                        <Square className="size-4" />
+                        Unsplit{' '}
+                        {terminals.find((t) => t.data.id === targetId)?.data.name ?? 'terminal'}
+                      </ContextMenu.Item>
+                    )}
+                    {joinable.length > 0 && (
+                      <ContextMenu.Group>
+                        <ContextMenu.Label>Join into split</ContextMenu.Label>
+                        {joinable.map((other) => (
+                          <ContextMenu.Item
+                            key={other.terminal.data.id}
+                            onClick={() =>
+                              onJoinTerminal(
+                                group[group.length - 1] ?? terminal.data.id,
+                                other.terminal.data.id
+                              )
+                            }
+                          >
+                            <Columns2 className="size-4" />
+                            {other.terminal.data.name}
+                          </ContextMenu.Item>
+                        ))}
+                      </ContextMenu.Group>
+                    )}
+                    {(group.length > 1 || joinable.length > 0) && <ContextMenu.Separator />}
+                    <ContextMenu.Item
+                      variant="destructive"
+                      onClick={() => onRemoveTerminal(targetId)}
                     >
-                      <X className="size-3" />
-                    </Tooltip.Trigger>
-                    <Tooltip.Content>Close terminal</Tooltip.Content>
-                  </Tooltip.Root>
-                }
-              />
-            ))}
+                      <X className="size-4" />
+                      Close terminal
+                    </ContextMenu.Item>
+                  </ContextMenu.Content>
+                </ContextMenu.Root>
+              );
+            })}
             <projectAvailabilityUi.LiveActionGuard projectId={projectId}>
-              <NewTerminalButton
-                disabled={liveActionsDisabled}
-                shellMenuState={shellMenuState}
-                onShellMenuOpen={onShellMenuOpen}
-                onRetryShellAvailability={onRetryShellAvailability}
-                onAddTerminal={onAddTerminal}
-              />
+              <div className="flex shrink-0 items-center">
+                <NewTerminalButton
+                  disabled={liveActionsDisabled}
+                  shellMenuState={shellMenuState}
+                  onShellMenuOpen={onShellMenuOpen}
+                  onRetryShellAvailability={onRetryShellAvailability}
+                  onAddTerminal={onAddTerminal}
+                />
+                <Tooltip.Root>
+                  <Tooltip.Trigger
+                    render={
+                      <Button
+                        disabled={liveActionsDisabled || terminals.length === 0}
+                        variant="ghost"
+                        size="xs"
+                        icon
+                        className="size-6 shrink-0 px-0"
+                        aria-label="Split terminal"
+                        onClick={onSplitTerminal}
+                      />
+                    }
+                  >
+                    <Columns2 className="size-3" />
+                  </Tooltip.Trigger>
+                  <Tooltip.Content>
+                    Split terminal <BoundShortcut command="workbench.splitPane" variant="keycaps" />
+                  </Tooltip.Content>
+                </Tooltip.Root>
+              </div>
             </projectAvailabilityUi.LiveActionGuard>
           </>
         ) : mode === 'scripts' ? (

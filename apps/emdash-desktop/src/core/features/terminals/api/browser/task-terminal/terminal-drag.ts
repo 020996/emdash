@@ -15,3 +15,6 @@ export function isTerminalDrawerDragData(value: unknown): value is TerminalDrawe
     typeof data.label === 'string'
   );
 }
+
+/** Droppable id prefix of a drawer terminal pane: dropping a drawer tab there joins its split. */
+export const TERMINAL_SPLIT_DROP_PREFIX = 'terminal-split-drop:';
