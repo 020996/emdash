@@ -138,6 +138,7 @@ export const appOperations = {
     requestId: string;
     selectionText?: string | null;
     linkText?: string | null;
+    canUnsplit?: boolean;
     x: number;
     y: number;
   }) => {

@@ -3,6 +3,7 @@ import { RelativeTime, Tooltip } from '@emdash/ui/react/primitives';
 import { observer } from 'mobx-react-lite';
 import { taskAgentStatus } from '@core/features/conversations/api/browser/conversation-selectors';
 import { type TaskStore } from '@core/features/tasks/api/browser/stores/task-store';
+import { getTerminalsForTask } from '@core/features/terminals/api/browser/terminal-selectors';
 import { getSidebarStore } from '@core/features/workbench/contributions/browser/app-stores';
 import { useDelayedBoolean } from '@core/primitives/react-hooks/browser/use-delay-boolean';
 import { getSortInstant, sortKindFor } from './sidebar-store';
@@ -48,6 +49,17 @@ export const TaskSidebarTrailingSlot = observer(function TaskSidebarTrailingSlot
     return (
       <Slot>
         <AgentStatus status={status} tooltip />
+      </Slot>
+    );
+  }
+
+  const terminalBusy = Array.from(getTerminalsForTask(task.data.id)?.terminals.values() ?? []).some(
+    (terminal) => terminal.isBusy
+  );
+  if (terminalBusy) {
+    return (
+      <Slot>
+        <AgentStatus status="working" tooltip />
       </Slot>
     );
   }

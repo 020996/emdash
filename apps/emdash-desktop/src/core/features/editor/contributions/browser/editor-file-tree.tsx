@@ -39,7 +39,6 @@ import {
 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { APP_NAME_LOWER } from '@core/primitives/app-identity/api/app-identity';
 import type { RenderableFileNode } from '@core/features/editor/api/browser/file-tree/tree-utils';
 import type { FileTabResource } from '@core/features/editor/api/browser/task-editor/stores/file-tab-resource';
 import {
@@ -64,6 +63,7 @@ import { useTabLayout } from '@core/features/workbench/api/browser/task-tab-regi
 import { relativeToWorkspace } from '@core/features/workspaces/api/browser/workspace-path';
 import { openModal, useOpenModal } from '@core/manifests/browser/modal-api';
 import { projectAvailabilityUi } from '@core/manifests/browser/project-availability-ui';
+import { APP_NAME_LOWER } from '@core/primitives/app-identity/api/app-identity';
 import {
   copyTextToClipboard,
   getHostClient,
@@ -911,6 +911,8 @@ export const EditorFileTree = observer(function EditorFileTree() {
           return <FolderIcon name={node.name} expanded={expanded} size={12} />;
         }}
         renderDecoration={(node) => {
+          if (node.type === 'file')
+            return files ? <FileMetaLabel files={files} path={node.path} /> : null;
           if (node.type !== 'directory') return null;
           const status = gitDecorations.directoryStatusByPath.get(
             relativeFileTreePath(workspace.path, node.path)
@@ -1153,6 +1155,35 @@ function prunePathSet(
 ): ReadonlySet<string> {
   const next = new Set([...paths].filter((path) => nodeByPath.has(path)));
   return next.size === paths.size ? paths : next;
+}
+
+/** Finder-style trailing metadata (modified time, size), shown while the row is hovered. */
+const FileMetaLabel = observer(function FileMetaLabel({
+  files,
+  path,
+}: {
+  files: FilesStore;
+  path: string;
+}) {
+  const meta = files.fileMeta(path);
+  if (!meta) return null;
+  const modified = new Date(meta.mtimeMs);
+  const isToday = modified.toDateString() === new Date().toDateString();
+  const time = isToday
+    ? modified.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : modified.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return (
+    <span className="hidden shrink-0 gap-2 text-[11px] text-foreground-passive tabular-nums in-[button:hover]:flex">
+      <span>{time}</span>
+      <span className="min-w-[7ch] text-right">{formatFileSize(meta.size)}</span>
+    </span>
+  );
+});
+
+function formatFileSize(bytes: number): string {
+  const unit = bytes > 0 ? Math.min(Math.floor(Math.log10(bytes) / 3), 4) : 0;
+  const value = bytes / 1000 ** unit;
+  return `${value < 10 && unit ? value.toFixed(1) : Math.round(value)} ${['B', 'KB', 'MB', 'GB', 'TB'][unit]}`;
 }
 
 function mergeRowState(

@@ -1,14 +1,19 @@
+import { useDroppable } from '@dnd-kit/core';
 import type { TerminalShellId } from '@emdash/core/primitives/terminal-shell/api';
 import { EmptyState } from '@emdash/ui/react/components';
-import { Button } from '@emdash/ui/react/primitives';
+import { Button, Resizable } from '@emdash/ui/react/primitives';
 import { observer } from 'mobx-react-lite';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ProblemsPanel,
   useTaskProblems,
 } from '@core/features/editor/contributions/browser/problems/problems-panel';
 import { useIsActiveTask } from '@core/features/tasks/api/browser/hooks/use-is-active-task';
 import { useTaskViewContext } from '@core/features/tasks/contributions/browser/task-view-context';
+import {
+  isTerminalDrawerDragData,
+  TERMINAL_SPLIT_DROP_PREFIX,
+} from '@core/features/terminals/api/browser/task-terminal/terminal-drag';
 import { useTerminalShellAvailability } from '@core/features/terminals/api/browser/use-terminal-shell-availability';
 import {
   TerminalDrawerTabBar,
@@ -101,6 +106,13 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
       ? (terminalMgr.sessions.get(activeTerminalId ?? '') ?? null)
       : (lifecycleScriptTabs.find((script) => script.data.id === activeScriptId)?.session ?? null);
 
+  // Split group of the active drawer terminal, minus members moved into a main pane.
+  const splitIds = activeTerminalId
+    ? terminalTabView
+        .splitGroup(activeTerminalId)
+        .filter((id) => terminalTabs.some((t) => t.data.id === id))
+    : [];
+
   const allSessionIds = [
     ...terminalTabs
       .map((t) => terminalMgr.sessions.get(t.data.id)?.sessionId)
@@ -133,12 +145,26 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
     attachRef: attachPaneScope,
     instance: paneScopeInstance,
     isFocused,
-  } = usePaneScope(`terminal-drawer:${projectId}:${taskId}`, activeStore ?? terminalTabView);
+  } = usePaneScope(`terminal-drawer:${projectId}:${taskId}`, activeStore ?? terminalTabView, {
+    canSplit: mode === 'terminals' && !liveActionsDisabled && Boolean(activeTerminalId),
+    splitPane: () => void handleSplit(),
+  });
 
   const handleCreate = async (shell?: TerminalShellId) => {
     if (liveActionsDisabled) return;
     setMode('terminals');
     await taskView.openNewTerminal(shell);
+  };
+
+  const handleSplit = async () => {
+    if (liveActionsDisabled || !activeTerminalId) return;
+    await taskView.splitTerminal(activeTerminalId);
+  };
+
+  const handleSelectTerminal = (id: string) => {
+    setMode('terminals');
+    terminalTabView.setActiveTab(id);
+    taskView.setTerminalDrawerActiveItem({ kind: 'terminal', id });
   };
 
   const handleShellMenuOpen = () => {
@@ -244,35 +270,78 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
           shellMenuState={shellMenuState}
           onShellMenuOpen={handleShellMenuOpen}
           onRetryShellAvailability={() => void shellAvailabilityQuery.refetch()}
-          onSelectTerminal={(id) => {
-            setMode('terminals');
-            terminalTabView.setActiveTab(id);
-            taskView.setTerminalDrawerActiveItem({ kind: 'terminal', id });
-          }}
+          onSelectTerminal={handleSelectTerminal}
           onAddTerminal={(shell) => void handleCreate(shell)}
+          onSplitTerminal={() => void handleSplit()}
+          splitGroupOf={(id) => terminalTabView.splitGroup(id)}
+          onJoinTerminal={(anchorId, otherId) => {
+            terminalTabView.joinSplit(anchorId, otherId);
+            handleSelectTerminal(otherId);
+          }}
+          onUnsplitTerminal={(id) => terminalTabView.unsplit(id)}
           onRemoveTerminal={(id) => terminalTabView.removeTab(id)}
           onRenameTerminal={(id, name) => void terminalMgr.renameTerminal(id, name)}
           onHoverTerminal={handleHoverTerminal}
           problemCount={problemFiles.reduce((sum, file) => sum + file.problems.length, 0)}
         />
         <div className="relative min-h-0 flex-1">
-          <TerminalPtyContent
-            className={mode === 'problems' ? 'invisible h-full' : 'h-full'}
-            activeSession={activeSession}
-            allSessionIds={allSessionIds}
-            autoFocus={shouldAutoFocus}
-            emptyState={mode === 'scripts' ? scriptsEmptyState : terminalEmptyState}
-            unavailableState={
-              <EmptyState
-                bare
-                label="Terminal unavailable"
-                description={liveActionDisabledReason ?? 'Live actions are unavailable.'}
+          {splitIds.length > 1 ? (
+            <Resizable.Group
+              key={splitIds.join('|')}
+              orientation="horizontal"
+              className={mode === 'problems' ? 'invisible h-full' : 'h-full'}
+            >
+              {splitIds.map((id, index) => {
+                const session = terminalMgr.sessions.get(id) ?? null;
+                return (
+                  <Fragment key={id}>
+                    {index > 0 && <Resizable.Handle />}
+                    <Resizable.Panel
+                      id={`terminal-split-${id}`}
+                      minSize="120px"
+                      onPointerDown={() => {
+                        if (id !== activeTerminalId) handleSelectTerminal(id);
+                      }}
+                    >
+                      <SplitDropZone terminalId={id}>
+                        <TerminalPtyContent
+                          className="h-full"
+                          activeSession={session}
+                          allSessionIds={session ? [session.sessionId] : []}
+                          autoFocus={shouldAutoFocus && id === activeTerminalId}
+                          emptyState={terminalEmptyState}
+                          disabledReason={liveActionDisabledReason}
+                          workspaceId={workspaceId}
+                          terminalPaddingBottom={0}
+                          onUnsplit={() => terminalTabView.unsplit(id)}
+                        />
+                      </SplitDropZone>
+                    </Resizable.Panel>
+                  </Fragment>
+                );
+              })}
+            </Resizable.Group>
+          ) : (
+            <SplitDropZone terminalId={activeTerminalId}>
+              <TerminalPtyContent
+                className={mode === 'problems' ? 'invisible h-full' : 'h-full'}
+                activeSession={activeSession}
+                allSessionIds={allSessionIds}
+                autoFocus={shouldAutoFocus}
+                emptyState={mode === 'scripts' ? scriptsEmptyState : terminalEmptyState}
+                unavailableState={
+                  <EmptyState
+                    bare
+                    label="Terminal unavailable"
+                    description={liveActionDisabledReason ?? 'Live actions are unavailable.'}
+                  />
+                }
+                disabledReason={mode === 'terminals' ? liveActionDisabledReason : null}
+                workspaceId={workspaceId}
+                terminalPaddingBottom={0}
               />
-            }
-            disabledReason={mode === 'terminals' ? liveActionDisabledReason : null}
-            workspaceId={workspaceId}
-            terminalPaddingBottom={0}
-          />
+            </SplitDropZone>
+          )}
           {/* Terminals stay mounted (hidden, not unmounted) so they keep their size and sessions. */}
           {mode === 'problems' && (
             <div className="absolute inset-0">
@@ -284,3 +353,28 @@ export const TerminalsPanel = observer(function TerminalsPanel() {
     </ViewScopeInstanceProvider>
   );
 });
+
+/** Drop a drawer terminal tab here to join it into this terminal's split (VS Code style). */
+function SplitDropZone({
+  terminalId,
+  children,
+}: {
+  terminalId: string | undefined;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver, active } = useDroppable({
+    id: `${TERMINAL_SPLIT_DROP_PREFIX}${terminalId ?? ''}`,
+    disabled: !terminalId,
+  });
+  const dragged = active?.data.current;
+  const showTarget =
+    isOver && isTerminalDrawerDragData(dragged) && dragged.terminalId !== terminalId;
+  return (
+    <div ref={setNodeRef} className="relative h-full">
+      {children}
+      {showTarget && (
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-30 w-1/2 border-2 border-(--primary-button-background) bg-(--primary-button-background)/15" />
+      )}
+    </div>
+  );
+}

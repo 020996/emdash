@@ -4,10 +4,13 @@ import {
   asProvisioned,
   getTaskStore,
 } from '@core/features/tasks/api/browser/task-state/task-selectors';
+import { isBuildArtifactPath } from '@core/features/terminals/api/browser/pty/file-link-provider';
 import { openFile } from '@core/features/workbench/api/browser/open-file';
 import { openWithOS } from '@core/features/workbench/api/browser/open-with-os';
 import { getTaskComposition } from '@core/features/workbench/api/browser/task-composition-selectors';
 import { workspaceRegistry } from '@core/features/workspaces/api/browser/stores/workspace-registry';
+import { relativeToWorkspace } from '@core/features/workspaces/api/browser/workspace-path';
+import { getHostClient } from '@core/primitives/desktop-host/browser/host-client';
 import {
   absoluteRuntimePath,
   hostFileRefFromNativePath,
@@ -105,6 +108,10 @@ export function makeFileLinkHandlers(
 ): { onOpenFile: (filePath: string) => void; onOpenExternal: (filePath: string) => void } {
   return {
     onOpenFile: (filePath) => {
+      if (isBuildArtifactPath(filePath)) {
+        void revealTaskFile(projectId, taskId, filePath);
+        return;
+      }
       void openFileInTaskEditor(projectId, taskId, filePath, options);
     },
     onOpenExternal: (filePath) => {
@@ -116,4 +123,21 @@ export function makeFileLinkHandlers(
       if (ref) void openWithOS(ref);
     },
   };
+}
+
+/** Shows a task file (e.g. a built .ipa/.apk) selected in Finder / the OS file manager. */
+async function revealTaskFile(projectId: string, taskId: string, filePath: string): Promise<void> {
+  const provisioned = asProvisioned(getTaskStore(projectId, taskId));
+  const workspace = provisioned ? workspaceRegistry.get(provisioned.workspaceId) : undefined;
+  if (!provisioned || !workspace) return;
+  const fail = (reason: unknown) =>
+    log.warn('Revealing terminal file link failed', { filePath, reason });
+  await getHostClient()
+    .then((client) =>
+      client.showWorkspaceItemInFolder({
+        workspaceId: provisioned.workspaceId,
+        relativePath: relativeToWorkspace(workspace.path, filePath),
+      })
+    )
+    .then((result) => result.success || fail(result.error), fail);
 }

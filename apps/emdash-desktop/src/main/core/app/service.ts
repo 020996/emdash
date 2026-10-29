@@ -61,7 +61,7 @@ type RemoteTerminalLaunchAttempt = {
 type TerminalContextMenuEvent = {
   type: 'terminal-context-menu-action';
   requestId: string;
-  action: 'paste' | 'select-all' | 'clear';
+  action: 'paste' | 'select-all' | 'clear' | 'unsplit';
 };
 
 type WorkspaceRuntimeAcquirer = ReturnType<typeof createDesktopWorkspaceRuntimeAcquirer>;
@@ -277,6 +277,7 @@ class AppService implements Disposable {
     requestId: string;
     selectionText?: string | null;
     linkText?: string | null;
+    canUnsplit?: boolean;
     x: number;
     y: number;
   }): void {
@@ -287,7 +288,7 @@ class AppService implements Disposable {
     const linkText = args.linkText?.trim() ?? '';
     const hasSelection = selectionText.length > 0;
     const hasLink = linkText.length > 0;
-    const emitAction = (action: 'paste' | 'select-all' | 'clear') => {
+    const emitAction = (action: TerminalContextMenuEvent['action']) => {
       this.emitHostEvent({
         type: 'terminal-context-menu-action',
         requestId: args.requestId,
@@ -324,6 +325,12 @@ class AppService implements Disposable {
         label: 'Clear',
         click: () => emitAction('clear'),
       },
+      ...(args.canUnsplit
+        ? [
+            { type: 'separator' as const },
+            { label: 'Unsplit Terminal', click: () => emitAction('unsplit') },
+          ]
+        : []),
     ];
 
     Menu.buildFromTemplate(template).popup({

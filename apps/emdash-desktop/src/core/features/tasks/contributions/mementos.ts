@@ -37,6 +37,8 @@ const taskTerminalSelectionV1Schema = z.object({
   activeItem: terminalDrawerActiveItemSchema.optional(),
   tabOrder: z.array(z.string()),
   activeTabId: z.string().optional(),
+  /** Drawer split groups (2+ terminal ids each), shown side by side. */
+  splits: z.array(z.array(z.string())).optional(),
 });
 
 export const taskTerminalSelectionSchema = defineVersionedSchema()

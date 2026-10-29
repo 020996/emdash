@@ -80,6 +80,7 @@ export type FolderView =
   | { status: 'error'; message: string };
 
 type PendingUploadNode = { node: RenderableFileNode };
+type FileMeta = { size: number; mtimeMs: number };
 type FolderSubscription = { scope: Scope; member: ListingMember };
 type ViewData = {
   nodes: Map<string, RenderableFileNode>;
@@ -124,6 +125,13 @@ export class FilesStore {
   private readonly revealing = observable.map<PortableRelativePath, number>();
   private readonly subscriptions = new Map<PortableRelativePath, FolderSubscription>();
   private readonly pendingUploadNodes = observable.map<FileNodeId, PendingUploadNode>();
+  // ponytail: one listDirectory per folder each time its listing changes; carrying size/mtime on
+  // the live listing itself would drop the extra call.
+  private readonly folderMeta = observable.map<PortableRelativePath, ReadonlyMap<string, FileMeta>>(
+    {},
+    { deep: false }
+  );
+  private readonly metaRequested = new WeakSet<object>();
   // Projection caches: unchanged listing entries keep their node, and unchanged
   // listings their sorted, filtered child list.
   private readonly renderableNodes = new WeakMap<ListingEntry, RenderableFileNode>();
@@ -700,6 +708,36 @@ export class FilesStore {
       return result.success ? ok<void>() : result;
     } catch (error) {
       return err(treeMutationError(error));
+    }
+  }
+
+  /** Size and modified time of a tree file, loaded per folder (refreshed when it changes). */
+  fileMeta(path: string): FileMeta | undefined {
+    const slash = path.lastIndexOf('/');
+    const folder = this.relativeOrNull(path.slice(0, slash));
+    if (folder === null) return undefined;
+    const view = this.folders.get(folder);
+    if (view?.status === 'ready' && !this.metaRequested.has(view.entries)) {
+      this.metaRequested.add(view.entries);
+      void this.loadFolderMeta(folder);
+    }
+    return this.folderMeta.get(folder)?.get(path.slice(slash + 1));
+  }
+
+  private async loadFolderMeta(folder: PortableRelativePath): Promise<void> {
+    try {
+      const client = await getFilesClient();
+      const result = await client.fs.listDirectory({ uri: this.uriFor(this.absolute(folder)) });
+      if (!result.success) return;
+      const meta = new Map(
+        result.data.entries.map((entry) => [
+          entry.name,
+          { size: entry.size, mtimeMs: entry.mtimeMs },
+        ])
+      );
+      runInAction(() => this.folderMeta.set(folder, meta));
+    } catch {
+      // Decorative only: a failed listing just leaves the rows without metadata.
     }
   }
 

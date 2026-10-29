@@ -508,6 +508,18 @@ export class TaskComposition {
     return terminalId;
   }
 
+  /** Splits the active drawer terminal: a new terminal opens beside it (VS Code style). */
+  async splitTerminal(anchorId: string): Promise<string | undefined> {
+    const terminalId = await this.createDefaultTerminal();
+    if (!terminalId) return undefined;
+    runInAction(() => {
+      this.terminalTabs.addSplit(anchorId, terminalId);
+      this.terminalTabs.setActiveTab(terminalId);
+      this.setTerminalDrawerActiveItem({ kind: 'terminal', id: terminalId });
+    });
+    return terminalId;
+  }
+
   private async createDefaultTerminal(shell?: TerminalShellId): Promise<string | undefined> {
     if (this._isCreatingTerminal) return undefined;
     this._isCreatingTerminal = true;

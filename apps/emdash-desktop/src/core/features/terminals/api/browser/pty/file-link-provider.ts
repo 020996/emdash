@@ -3,6 +3,13 @@ import { findFileLinks, type FileLinkMatch } from '../../../browser/pty/file-lin
 
 let activationModifierListenersAttached = false;
 
+const BUILD_ARTIFACT_PATTERN = /\.(ipa|apk|aab|app|dmg|xcarchive|zip)$/i;
+
+/** Build outputs (binaries, archives): plain-click links that reveal the file instead of opening it. */
+export function isBuildArtifactPath(path: string): boolean {
+  return BUILD_ARTIFACT_PATTERN.test(path);
+}
+
 type LinkDecorations = NonNullable<ILink['decorations']>;
 type ActivationModifierEvent = Pick<MouseEvent, 'ctrlKey' | 'metaKey'>;
 type LinkActivationEvent = Pick<MouseEvent, 'button'>;
@@ -76,6 +83,18 @@ export class FileLinkProvider implements ILinkProvider {
   }
 
   private toXtermLink(match: FileLinkMatch): ILink {
+    // Build outputs stay underlined and open on a plain click: they are what you came for.
+    if (isBuildArtifactPath(match.text)) {
+      return {
+        range: match.range,
+        text: match.text,
+        decorations: { pointerCursor: true, underline: true },
+        activate: (event, linkText) => {
+          if (!isPrimaryMouseButton(event)) return;
+          this.onOpenFile(normalizeFilePath(linkText));
+        },
+      };
+    }
     const decorations = this.tracker.decorations();
     const link: ILink = {
       range: match.range,

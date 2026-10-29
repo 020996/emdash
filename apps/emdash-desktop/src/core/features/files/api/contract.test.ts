@@ -22,6 +22,7 @@ describe('filesWireContract', () => {
       'move',
       'copy',
       'delete',
+      'listDirectory',
     ]);
     expect(Object.keys(filesWireContract.listing.mutations)).toEqual(
       Object.keys(filesContract.listing.mutations)

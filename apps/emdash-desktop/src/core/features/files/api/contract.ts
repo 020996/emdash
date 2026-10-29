@@ -71,6 +71,7 @@ const filesFsContract = defineContract({
     uriKeySchema.extend({ recursive: z.boolean().optional() }),
     filesContract.fs.delete.output
   ),
+  listDirectory: runtimeFallibleProcedure(uriKeySchema, filesContract.fs.listDirectory.output),
 });
 
 export const filesDomain = 'files' as const;

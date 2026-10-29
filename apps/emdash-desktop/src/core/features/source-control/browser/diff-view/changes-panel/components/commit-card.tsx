@@ -1,5 +1,4 @@
 import { Input, SplitButton, toast } from '@emdash/ui/react/primitives';
-import { card } from '@emdash/ui/styles/recipes/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useState } from 'react';
@@ -15,7 +14,6 @@ import {
   useWorkspaceId,
 } from '@core/features/workbench/api/browser/task-composition-context';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
-import { cn } from '@core/primitives/styling/browser/cn';
 
 type CommitPhase =
   | 'idle'
@@ -160,15 +158,10 @@ export const CommitCard = observer(function CommitCard() {
       : diffView.effectiveCommitAction;
 
   return (
-    <div
-      className={cn(
-        card({ level: 'elevated-emphasis', radius: 'lg', padding: 'sm' }),
-        'mx-2 my-2 flex shrink-0 flex-col items-center justify-between gap-2'
-      )}
-    >
+    <div className="flex shrink-0 flex-col gap-1.5 border-b border-border px-3 pt-2 pb-3">
       <Input
         placeholder="Message (⌘Enter to commit)"
-        className="w-full bg-background"
+        className="w-full"
         value={commitMessage}
         onChange={(e) => setCommitMessage(e.target.value)}
         onKeyDown={(e) => {

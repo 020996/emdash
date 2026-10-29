@@ -34,6 +34,11 @@ const EMULATOR_BOOT_POLL_MS = 3_000;
 const DETECT_ATTEMPTS = 15;
 const DETECT_RETRY_MS = 2_000;
 
+// Same app lookup as flutter (DeviceHub on newer Xcode, else Simulator), minus its forced `-n`.
+const IOS_SIMULATOR_OPEN =
+  'open -a "$(dirname "$(xcode-select -p)")/Applications/DeviceHub.app" 2>/dev/null' +
+  ' || open -a "$(xcode-select -p)/Applications/Simulator.app"';
+
 const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 const newToken = () => crypto.randomUUID().slice(0, 8);
 
@@ -146,7 +151,13 @@ export class FlutterRunner {
 
   private async boot(emulator: FlutterEmulator): Promise<FlutterDevice> {
     const before = new Set(parseFlutterDevices(await this.exec(DEVICES_COMMAND)).map((d) => d.id));
-    await this.exec(`flutter emulators --launch ${quote(emulator.id)}`);
+    // `flutter emulators --launch` on iOS runs `open -n` (forced new app instance) then `open`,
+    // which opens a second simulator window when one is already up; plain `open -a` reuses it.
+    await this.exec(
+      emulator.platform === 'ios'
+        ? IOS_SIMULATOR_OPEN
+        : `flutter emulators --launch ${quote(emulator.id)}`
+    );
     for (let attempt = 0; attempt < EMULATOR_BOOT_POLLS; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, EMULATOR_BOOT_POLL_MS));
       const booted = parseFlutterDevices(await this.exec(DEVICES_COMMAND)).find(
