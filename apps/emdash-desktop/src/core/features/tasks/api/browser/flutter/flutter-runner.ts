@@ -25,6 +25,10 @@ export type FlutterRunTarget =
 
 type LastDevice = Pick<FlutterDevice, 'id' | 'name'>;
 
+/** `run` skips DDS and its DevTools server (one less Dart process); hot reload/restart still work.
+ * Simulators only build debug mode, so this is the lighter option there. */
+export type FlutterRunMode = 'run' | 'debug';
+
 // ponytail: simulators/emulators only; drop these flags if wireless devices are ever needed.
 const DEVICES_COMMAND = 'flutter devices --machine --device-connection attached --device-timeout 1';
 const OUTPUT_LIMIT = 64_000;
@@ -39,6 +43,15 @@ const IOS_SIMULATOR_OPEN =
   'open -a "$(dirname "$(xcode-select -p)")/Applications/DeviceHub.app" 2>/dev/null' +
   ' || open -a "$(xcode-select -p)/Applications/Simulator.app"';
 
+/** Where this run's output begins in a replayed log. Past OUTPUT_LIMIT the start marker is gone,
+ * so fall back to just after the last run's exit marker (or the whole buffer). */
+function runStart(output: string, startMarker: string): number {
+  const start = output.indexOf(startMarker);
+  if (start !== -1) return start;
+  const last = [...output.matchAll(/@@X1_[\w-]+@@/g)].at(-1);
+  return last?.index === undefined ? 0 : last.index + last[0].length;
+}
+
 const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 const newToken = () => crypto.randomUUID().slice(0, 8);
 
@@ -48,15 +61,19 @@ export class FlutterRunner {
   isFlutter: boolean | null = null;
   phase: 'idle' | 'busy' | 'starting' | 'running' = 'idle';
   lastDevice: LastDevice | null;
+  mode: FlutterRunMode;
   /** Last device list, shown instantly while a fresh one loads. */
   targets: FlutterTargets | null = null;
   private output = '';
-  private terminalId: string | null = null;
+  /** The "Flutter" terminal commands are typed into, once created. */
+  terminalId: string | null = null;
   private key: TerminalRuntimeKey | null = null;
   private log: ReplicaLog | null = null;
   private runToken: string | null = null;
   private readonly listeners = new Set<() => void>();
   private detecting: Promise<void> | null = null;
+  /** Overlapping busy work (device refresh while an emulator boots) must not end `busy` early. */
+  private busyCount = 0;
 
   constructor(
     private readonly projectId: string,
@@ -66,10 +83,13 @@ export class FlutterRunner {
     private readonly previewServers: PreviewServerStore
   ) {
     this.lastDevice = readLastDevice(projectId);
+    this.mode = readPref(modeKey(projectId)) === 'debug' ? 'debug' : 'run';
     makeObservable<FlutterRunner, 'onOutput'>(this, {
       isFlutter: observable,
       phase: observable,
       lastDevice: observable,
+      mode: observable,
+      setMode: action,
       targets: observable.ref,
       state: computed,
       onOutput: action,
@@ -84,7 +104,10 @@ export class FlutterRunner {
 
   /** The file index may still be building when the task opens, so a miss is retried. */
   detectFlutter(): Promise<void> {
-    this.detecting ??= this.detect();
+    this.detecting ??= this.detect().catch((error: unknown) => {
+      this.detecting = null;
+      throw error;
+    });
     return this.detecting;
   }
 
@@ -107,6 +130,11 @@ export class FlutterRunner {
     });
   }
 
+  setMode(mode: FlutterRunMode): void {
+    this.mode = mode;
+    writePref(modeKey(this.projectId), mode);
+  }
+
   async refreshTargets(): Promise<void> {
     const targets = await this.busy(async () => ({
       devices: parseFlutterDevices(await this.exec(DEVICES_COMMAND)),
@@ -117,8 +145,8 @@ export class FlutterRunner {
     });
   }
 
-  async run(target: FlutterRunTarget): Promise<void> {
-    if (this.state === 'starting' || this.state === 'running') return;
+  /** Makes `target` the remembered device, booting an offline emulator first. */
+  async selectTarget(target: FlutterRunTarget): Promise<LastDevice> {
     const device =
       target.kind === 'device' ? target.device : await this.busy(() => this.boot(target.emulator));
     const lastDevice = { id: device.id, name: device.name };
@@ -126,6 +154,12 @@ export class FlutterRunner {
       this.lastDevice = lastDevice;
     });
     writeLastDevice(this.projectId, lastDevice);
+    return lastDevice;
+  }
+
+  async run(target: FlutterRunTarget): Promise<void> {
+    if (this.state === 'starting' || this.state === 'running') return;
+    const device = await this.selectTarget(target);
     await this.ensureTerminal();
     const token = newToken();
     runInAction(() => {
@@ -133,7 +167,7 @@ export class FlutterRunner {
       this.phase = 'starting';
     });
     await this.send(
-      `${markerCommand('S', token)}; flutter run -d ${quote(device.id)}; ${markerCommand('X', token)}\r`
+      `${markerCommand('S', token)}; flutter run -d ${quote(device.id)}${this.mode === 'run' ? ' --no-dds' : ''}; ${markerCommand('X', token)}\r`
     );
   }
 
@@ -170,13 +204,14 @@ export class FlutterRunner {
 
   private async busy<T>(work: () => Promise<T>): Promise<T> {
     runInAction(() => {
+      this.busyCount++;
       this.phase = 'busy';
     });
     try {
       return await work();
     } finally {
       runInAction(() => {
-        if (this.phase === 'busy') this.phase = 'idle';
+        if (--this.busyCount === 0 && this.phase === 'busy') this.phase = 'idle';
       });
     }
   }
@@ -233,9 +268,12 @@ export class FlutterRunner {
       return;
     }
     if (this.phase === 'running') return;
-    const start = this.output.indexOf(markerText('S', this.runToken));
-    if (start === -1) return;
-    if (this.output.includes('Flutter run key commands', start)) this.phase = 'running';
+    // Appends are scanned on their own: a long build's spinner output can push the start marker
+    // past OUTPUT_LIMIT. Only a replayed log needs the marker to skip earlier runs.
+    const start = reset ? runStart(this.output, markerText('S', this.runToken)) : 0;
+    if ((reset ? this.output : recent).includes('Flutter run key commands', start)) {
+      this.phase = 'running';
+    }
   }
 
   private endRun(): void {
@@ -280,20 +318,33 @@ export function getFlutterRunner(
 }
 
 const lastDeviceKey = (projectId: string) => `emdash.flutter.lastDevice.${projectId}`;
+const modeKey = (projectId: string) => `emdash.flutter.mode.${projectId}`;
 
 function readLastDevice(projectId: string): LastDevice | null {
   try {
-    const raw = localStorage.getItem(lastDeviceKey(projectId));
+    const raw = readPref(lastDeviceKey(projectId));
     return raw ? (JSON.parse(raw) as LastDevice) : null;
   } catch {
     return null;
   }
 }
 
-/** Remembering the device is a convenience only, so storage failures are ignored. */
 function writeLastDevice(projectId: string, device: LastDevice): void {
+  writePref(lastDeviceKey(projectId), JSON.stringify(device));
+}
+
+/** Device and mode are conveniences only, so storage failures are ignored. */
+function readPref(key: string): string | null {
   try {
-    localStorage.setItem(lastDeviceKey(projectId), JSON.stringify(device));
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writePref(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
   } catch {
     return;
   }

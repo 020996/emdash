@@ -10,8 +10,9 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
+import { computed } from 'mobx';
 import { observer } from 'mobx-react-lite';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { ConnectionStatusDot } from '@core/features/machines/contributions/browser/connection-status-dot';
 import {
   isUnregisteredProject,
@@ -31,11 +32,8 @@ import { getSidebarStore } from '@core/features/workbench/contributions/browser/
 import { useOpenModal } from '@core/manifests/browser/modal-api';
 import { projectAvailabilityUi } from '@core/manifests/browser/project-availability-ui';
 import { BoundShortcut } from '@core/primitives/keybindings/browser/shortcut';
-import {
-  useNavigate,
-  useViewParams,
-  useWorkspaceSlots,
-} from '@core/primitives/navigation/browser/navigation-hooks';
+import { useNavigate } from '@core/primitives/navigation/browser/navigation-hooks';
+import { getNavigation } from '@core/primitives/navigation/browser/navigation-selectors';
 import { cn } from '@core/primitives/styling/browser/cn';
 import {
   SidebarItemMiniButton,
@@ -56,9 +54,6 @@ export const SidebarProjectItem = observer(function SidebarProjectItem({
   projectId: string;
 }) {
   const { navigate } = useNavigate();
-  const { currentView } = useWorkspaceSlots();
-  const projectParams = useViewParams(projectViewDef);
-  const taskParams = useViewParams(taskViewDef);
   const openCreateTaskModal = useOpenModal('taskModal');
   const confirmDeleteProject = useConfirmDeleteProject();
   const openRenameProject = useOpenModal('renameProjectModal');
@@ -71,15 +66,16 @@ export const SidebarProjectItem = observer(function SidebarProjectItem({
     void repo?.remoteData.load();
   }, [projectId]);
 
-  const currentProjectId =
-    currentView === 'task'
-      ? taskParams?.projectId
-      : currentView === 'project'
-        ? projectParams?.projectId
-        : null;
-  const currentTaskId = currentView === 'task' ? taskParams?.taskId : null;
-
-  const isProjectActive = currentProjectId === projectId && !currentTaskId;
+  // Per-row computed: navigation re-renders only the rows whose active state flips.
+  const isProjectActive = useMemo(
+    () =>
+      computed(() => {
+        const { viewId, params } = getNavigation().currentRef;
+        if (viewId === taskViewDef.id) return params.projectId === projectId && !params.taskId;
+        return viewId === projectViewDef.id && params.projectId === projectId;
+      }),
+    [projectId]
+  ).get();
 
   useEffect(() => {
     if (isProjectActive) prefetchRepository();

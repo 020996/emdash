@@ -1,8 +1,9 @@
 import type { Unsubscribe } from '@emdash/shared';
 import { createScope } from '@emdash/shared/concurrency';
 import type { KeyedMutex } from '@emdash/shared/concurrency';
-import { query, type ExposedMutationContext, type Query } from '@emdash/wire/state';
+import { peek, query, type ExposedMutationContext, type Query } from '@emdash/wire/state';
 import {
+  type CheckoutHeadState,
   type gitRepositoryContract,
   type GitRefsState,
   type GitRemotesState,
@@ -54,6 +55,7 @@ export class RepositoryResource {
   private readonly commonDirWatch: WatchHandle;
   private readonly onError: (context: string, error: unknown) => void;
   private disposed = false;
+  private lastFetch: Promise<void> = Promise.resolve();
 
   static async create(options: RepositoryResourceOptions): Promise<RepositoryResource> {
     return new RepositoryResource(options);
@@ -106,7 +108,20 @@ export class RepositoryResource {
     context: GitOperationContext,
     options: { refspec?: string; force?: boolean } = {}
   ) {
-    const result = await this.execute(() => this.commands.fetch(remote, context, options), true);
+    this.assertActive();
+    // Outside the lane: fetch only writes objects and remote refs, so status/stage/commit
+    // must not queue behind network I/O. The object-store mutex still orders it against
+    // push/pull and other object transfers.
+    const pending = this.options.objectStoreMutex.runExclusive(this.identity.objectStoreId, () =>
+      this.commands.fetch(remote, context, options)
+    );
+    // The mutex serializes fetches, so the latest one settles last; dispose waits on it.
+    this.lastFetch = pending.then(
+      () => {},
+      () => {}
+    );
+    const result = await pending;
+    if (this.disposed) return result;
     this.invalidate('refs');
     if (result.success) this.invalidateCheckoutHistory();
     else this.invalidate('remotes');
@@ -147,17 +162,22 @@ export class RepositoryResource {
     this.disposed = true;
     await this.commonDirWatch.release();
     await this.lane.drain();
+    await this.lastFetch;
     await this.statesScope.dispose();
     this.checkouts.clear();
   }
 
   private refsChanged(): void {
     this.invalidate('refs');
-    this.invalidateCheckoutHistory();
+    // Per-worktree status/head staleness comes from the classifier, scoped to affected refs.
+    for (const checkout of this.checkouts.values()) checkout.invalidateRefContents();
   }
 
   private invalidateCheckoutHistory(): void {
-    for (const checkout of this.checkouts.values()) checkout.invalidateRepositoryHistory();
+    // Fetches move remote refs only: ahead/behind may change, working tree status cannot.
+    for (const checkout of this.checkouts.values()) {
+      checkout.applyRepositoryWatchEffects({ status: false, head: true });
+    }
   }
 
   private attachCommonDirWatch(watcher: IWatchService): WatchHandle {
@@ -213,6 +233,7 @@ export class RepositoryResource {
         id: checkout.identity.checkoutId,
         gitDir: checkout.identity.gitDir,
         worktree: checkout.identity.checkoutRoot,
+        ...trackedRefs(peek(checkout.state('head'))),
       })),
     };
   }
@@ -230,4 +251,20 @@ export class RepositoryResource {
   private assertActive(): void {
     if (this.disposed) throw new Error('RepositoryResource is disposed');
   }
+}
+
+/** Refs a checkout's head depends on; undefined means unknown, so every ref change applies. */
+function trackedRefs(head: CheckoutHeadState | undefined): {
+  branchRef?: string | null;
+  upstreamRef?: string | null;
+} {
+  if (!head) return {};
+  if (head.kind === 'detached') return { branchRef: null, upstreamRef: null };
+  const { upstream } = head;
+  if (upstream.kind === 'none') return { branchRef: head.ref, upstreamRef: null };
+  // An unresolved upstream may appear with any ref change (e.g. first push), so leave it open.
+  return {
+    branchRef: head.ref,
+    upstreamRef: upstream.tracking.kind === 'resolved' ? upstream.tracking.ref : undefined,
+  };
 }

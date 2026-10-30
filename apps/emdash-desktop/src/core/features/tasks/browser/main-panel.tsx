@@ -2,6 +2,7 @@ import { Button, Resizable, toast, useCollapsiblePanelBinding } from '@emdash/ui
 import { Loader2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useMemo, useState } from 'react';
+import { GitStatusSection } from '@core/features/source-control/contributions/browser/git-status-section';
 import {
   getTaskManagerStore,
   getTaskStore,
@@ -9,6 +10,7 @@ import {
   taskErrorMessage,
   taskViewKind,
 } from '@core/features/tasks/api/browser/task-state/task-selectors';
+import { FlutterDevicePicker } from '@core/features/tasks/browser/flutter/flutter-device-picker';
 import { useTaskViewContext } from '@core/features/tasks/contributions/browser/task-view-context';
 import { taskPanelLayoutsMemento } from '@core/features/tasks/contributions/mementos';
 import { useTaskComposition } from '@core/features/workbench/api/browser/task-composition-context';
@@ -370,32 +372,37 @@ const ReadyTaskMainPanel = observer(function ReadyTaskMainPanel() {
 
   return (
     <taskTabView.TabLayoutProvider layout={taskView.paneLayout}>
-      <Resizable.Group
-        orientation="horizontal"
-        id="task-sidebar-layout"
-        {...sidebarBinding.groupProps}
-      >
-        <Resizable.Panel id="task-main-area">
-          <TaskMainColumn />
-        </Resizable.Panel>
-        {/* Collapsed = panel AND handle unmounted (sync contract: never
+      <div className="flex h-full min-h-0 flex-col">
+        <Resizable.Group
+          orientation="horizontal"
+          id="task-sidebar-layout"
+          className="min-h-0 flex-1"
+          {...sidebarBinding.groupProps}
+        >
+          <Resizable.Panel id="task-main-area">
+            <TaskMainColumn />
+          </Resizable.Panel>
+          {/* Collapsed = panel AND handle unmounted (sync contract: never
             program the panels). */}
-        {isSidebarOpen && (
-          <>
-            <Resizable.Handle />
-            <Resizable.Panel
-              {...sidebarBinding.collapsiblePanelProps}
-              defaultSize={sidebarBinding.collapsiblePanelProps.defaultSize ?? '25%'}
-              minSize={SIDEBAR_MIN_SIZE}
-              maxSize="50%"
-              collapsible
-              collapsedSize="0%"
-            >
-              <TaskSidebar />
-            </Resizable.Panel>
-          </>
-        )}
-      </Resizable.Group>
+          {isSidebarOpen && (
+            <>
+              <Resizable.Handle />
+              <Resizable.Panel
+                {...sidebarBinding.collapsiblePanelProps}
+                defaultSize={sidebarBinding.collapsiblePanelProps.defaultSize ?? '25%'}
+                minSize={SIDEBAR_MIN_SIZE}
+                maxSize="50%"
+                collapsible
+                collapsedSize="0%"
+              >
+                <TaskSidebar />
+              </Resizable.Panel>
+            </>
+          )}
+        </Resizable.Group>
+        {/* Status bar: branch, sync and run device, under the whole task like VS Code's. */}
+        <GitStatusSection extra={<FlutterDevicePicker />} />
+      </div>
     </taskTabView.TabLayoutProvider>
   );
 });

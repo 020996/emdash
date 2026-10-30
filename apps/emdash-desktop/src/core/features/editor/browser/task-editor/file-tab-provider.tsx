@@ -42,6 +42,8 @@ export interface FileOpenArgs {
  * unmounted, so cursor position and scroll survive kind transitions.
  */
 const FileTabContent = observer(function FileTabContent({ host, ctx }: TabContentProps) {
+  // Panes without a file tab (chat/terminal only) skip creating a Monaco instance.
+  if (!host.resolvedTabs.some((t) => t.kind === 'file')) return null;
   return (
     <EditorProvider>
       <FileContent host={host} ctx={ctx} />

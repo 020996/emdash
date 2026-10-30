@@ -74,17 +74,23 @@ function AssistantRender(props: { data: ChatMessage; ctx: RenderCtx; vars: Messa
   // `streaming` and `settledCount` are reactive accessors so Code.tsx effects
   // track the per-block settled transition (fence close or blank-line boundary)
   // and highlight each block exactly once when it crosses that boundary.
-  const parsed = createMemo(() => {
-    const ctx = mCtx();
-    if (!ctx) return { blocks: [] as Block[], settledCount: 0 };
-    const blocks = props.data.streaming
-      ? ctx.caches.parseBlocksStreaming(props.data.id, props.data.text)
-      : ctx.caches.parseBlocks(props.data.id, props.data.text);
-    const settledCount = props.data.streaming
-      ? ctx.caches.settledBlockCount(props.data.id)
-      : blocks.length;
-    return { blocks, settledCount };
-  });
+  const parsed = createMemo(
+    () => {
+      const ctx = mCtx();
+      if (!ctx) return { blocks: [] as Block[], settledCount: 0 };
+      const blocks = props.data.streaming
+        ? ctx.caches.parseBlocksStreaming(props.data.id, props.data.text)
+        : ctx.caches.parseBlocks(props.data.id, props.data.text);
+      const settledCount = props.data.streaming
+        ? ctx.caches.settledBlockCount(props.data.id)
+        : blocks.length;
+      return { blocks, settledCount };
+    },
+    undefined,
+    {
+      equals: (a, b) => a.blocks === b.blocks && a.settledCount === b.settledCount,
+    }
+  );
 
   const streamAnimation: StreamAnimation = {
     frontier: new Map(),

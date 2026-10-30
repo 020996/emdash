@@ -30,6 +30,7 @@ interface BranchSelectorProps {
   observationKind?: 'fresh' | 'stale' | 'unavailable';
   remotes?: GitRemote[];
   selectedRemoteName?: string;
+  contentClassName?: string;
 }
 
 export function BranchSelector({
@@ -45,6 +46,7 @@ export function BranchSelector({
   observationKind = 'fresh',
   remotes,
   selectedRemoteName,
+  contentClassName,
 }: BranchSelectorProps) {
   const valueKey =
     value?.type === 'remote'
@@ -140,7 +142,11 @@ export function BranchSelector({
         </Combobox.Trigger>
       )}
       <Combobox.Content
-        className={cn('min-w-(--anchor-width) border', showRemoteFooter ? 'pb-0' : 'pb-1')}
+        className={cn(
+          'min-w-(--anchor-width) border',
+          showRemoteFooter ? 'pb-0' : 'pb-1',
+          contentClassName
+        )}
       >
         {observationKind === 'stale' ? (
           <p

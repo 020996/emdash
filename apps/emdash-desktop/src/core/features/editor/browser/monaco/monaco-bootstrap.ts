@@ -87,7 +87,8 @@ export const monacoBootstrap = {
   /** Update the active Monaco theme across all editor instances simultaneously. */
   setTheme(themeClass: ThemeClass): void {
     if (!instance) return;
-    defineMonacoThemes(instance as Parameters<typeof defineMonacoThemes>[0]);
+    // Themes are defined in init() and redefined by ThemeProvider when the window
+    // transparency flips; redefining here repainted every editor on each mount.
     instance.editor.setTheme(getMonacoTheme(themeClass));
   },
 };

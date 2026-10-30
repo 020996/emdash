@@ -4,9 +4,15 @@ import type * as monacoNS from 'monaco-editor';
 import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { encodeFacetUri } from '@core/features/editor/api/browser/facet-binder/facet-uri';
 import { useIsActiveTask } from '@core/features/tasks/api/browser/hooks/use-is-active-task';
+import {
+  asProvisioned,
+  getTaskStore,
+} from '@core/features/tasks/api/browser/task-state/task-selectors';
 import { useTaskViewContext } from '@core/features/tasks/contributions/browser/task-view-context';
 import { useTaskComposition } from '@core/features/workbench/api/browser/task-composition-context';
 import { editorScope } from '@core/features/workbench/contributions/scopes';
+import { workspaceRegistry } from '@core/features/workspaces/api/browser/stores/workspace-registry';
+import { relativeToWorkspace } from '@core/features/workspaces/api/browser/workspace-path';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
 import { projectAvailabilityUi } from '@core/manifests/browser/project-availability-ui';
 import { useTheme } from '@core/primitives/theme/browser';
@@ -14,7 +20,9 @@ import { disabled, enabled, hidden, type ViewScopeImpl } from '@core/primitives/
 import { useViewScope, ViewScopeInstanceProvider } from '@core/primitives/view-scopes/react';
 import { usePaneContext } from '@core/primitives/workbench-shell/browser/tabs/pane-context';
 import { getLanguageServices } from '../lsp/language-services';
+import { installInlineBlame } from '../monaco/inline-blame';
 import { installMonacoFacetBinder } from '../monaco/install-monaco-facet-binder';
+import { installMergeConflicts } from '../monaco/merge-conflicts';
 import { monacoBootstrap } from '../monaco/monaco-bootstrap';
 import { addMonacoKeyboardShortcuts, configureMonacoEditor } from '../monaco/monaco-config';
 import { registerActiveCodeEditor } from '../renderers/activeCodeEditor';
@@ -119,6 +127,17 @@ export const EditorProvider = observer(function EditorProvider({
     editorRef.current = editor;
 
     configureMonacoEditor(editor);
+    const cleanupConflicts = installMergeConflicts(editor, m);
+    const cleanupBlame = installInlineBlame(editor, m, () => {
+      const resource = getActiveFileResource(paneTabManager);
+      const provisioned = asProvisioned(getTaskStore(projectId, taskId));
+      const workspace = provisioned && workspaceRegistry.get(provisioned.workspaceId);
+      if (!resource?.inWorkspace || !provisioned || !workspace) return null;
+      return {
+        workspaceId: provisioned.workspaceId,
+        relativePath: relativeToWorkspace(workspace.path, resource.path),
+      };
+    });
 
     const cleanupActive = registerActiveCodeEditor(editor);
     const cleanupLanguage = getLanguageServices()?.bindEditor(editor, { projectId, taskId });
@@ -145,6 +164,8 @@ export const EditorProvider = observer(function EditorProvider({
 
     return () => {
       focusDisposable.dispose();
+      cleanupConflicts();
+      cleanupBlame();
       cleanupActive();
       cleanupLanguage?.();
       // Save the active file's view state before disposal. Must run here, not in

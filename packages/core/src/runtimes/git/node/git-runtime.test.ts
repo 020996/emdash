@@ -483,4 +483,60 @@ describe('GitRuntime', () => {
       calls.filter((call) => call.startsWith('rev-parse --path-format=absolute'))
     ).toHaveLength(3);
   });
+
+  it('refreshes only the worktree whose branch or upstream ref changed', async () => {
+    const repo = await realpath(await makeRepo());
+    const linked = await realpath(
+      await mkdtemp(path.join(tmpdir(), 'emdash-shared-runtime-scoped-'))
+    );
+    await execFileAsync('git', ['worktree', 'add', linked, '-b', 'feature'], { cwd: repo });
+    const binDir = await mkdtemp(path.join(tmpdir(), 'emdash-shared-runtime-git-bin-'));
+    const executable = path.join(binDir, 'git-wrapper.sh');
+    const logPath = path.join(binDir, 'git-calls.log');
+    await writeFile(
+      executable,
+      `#!/bin/sh\nprintf '%s %s\\n' "$PWD" "$*" >> ${JSON.stringify(logPath)}\nexec git "$@"\n`
+    );
+    await chmod(executable, 0o755);
+    const listeners = new Map<string, (events: { kind: 'update'; path: string }[]) => void>();
+    const watcher: IWatchService = {
+      watch: (root, onEvents) => {
+        listeners.set(root, onEvents as never);
+        return { ready: async () => ok(undefined), release: async () => {} };
+      },
+      dispose: async () => {},
+    };
+    const runtime = new GitRuntime({ executable, watcher });
+    const gitCommonDir = path.join(repo, '.git');
+    const statusCallsIn = async (cwd: string) =>
+      (await readFile(logPath, 'utf8'))
+        .split('\n')
+        .filter((line) => line.startsWith(`${cwd} `) && line.includes(' status '));
+    const fire = async (ref: string) => {
+      await writeFile(logPath, '');
+      listeners.get(gitCommonDir)?.([{ kind: 'update', path: path.join(gitCommonDir, ref) }]);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    };
+
+    try {
+      const leases = [repo, linked].flatMap((root) => [
+        runtime.checkout.model.acquireState(checkoutSelector(root), 'status'),
+        runtime.checkout.model.acquireState(checkoutSelector(root), 'head'),
+      ]);
+      await Promise.all(leases.map((lease) => lease.ready()));
+      expect(listeners.has(gitCommonDir)).toBe(true);
+
+      await fire('refs/heads/feature');
+      expect(await statusCallsIn(linked)).toHaveLength(1);
+      expect(await statusCallsIn(repo)).toHaveLength(0);
+
+      await fire('refs/remotes/origin/unrelated');
+      expect(await statusCallsIn(linked)).toHaveLength(0);
+      expect(await statusCallsIn(repo)).toHaveLength(0);
+
+      await Promise.all(leases.map((lease) => lease.release()));
+    } finally {
+      await runtime.dispose();
+    }
+  });
 });

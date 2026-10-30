@@ -123,7 +123,7 @@ const checks: ContractCheck[] = [
     scope: surfaceDirs,
     allowlist: [
       {
-        path: 'core/features/tasks/browser/flutter/flutter-runner.ts',
+        path: 'core/features/tasks/api/browser/flutter/flutter-runner.ts',
         reason:
           'Remembers the last Flutter device per project, a convenience preference, not layout ' +
           'state; losing it only reopens the device picker.',

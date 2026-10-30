@@ -1741,8 +1741,11 @@
   backdrop-filter: blur(12px);
 }
 
+/* Popups (menus, comboboxes, popovers) portal out as .surface-elevated; they take the canvas
+   color too, so every floating panel matches the app instead of a grey slab. */
 .em-modal,
-[data-slot='sheet-content'] {
+[data-slot='sheet-content'],
+[data-base-ui-portal] .surface-elevated {
   --border: color-mix(in oklab, var(--em-foreground) 13%, transparent);
   /* Same color as the canvas so the modal does not float as a lighter slab. */
   background-color: var(--em-background);
@@ -1750,7 +1753,34 @@
 
 /* See-through window: the modal keeps a near-solid panel and blurs what is behind it, so the
    page under it never bleeds through the text. */
-.em-transparent :is(.em-modal, [data-slot='sheet-content']) {
+.em-transparent
+  :is(
+    .em-modal,
+    [data-slot='sheet-content'],
+    [data-base-ui-portal] .surface-elevated,
+    [data-sonner-toast][data-styled='true']
+  ) {
   background-color: color-mix(in oklab, var(--glass-src-background) 88%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
+}
+
+/* Toasts float over text, so they stay nearly opaque even on the see-through window. */
+.em-transparent [data-sonner-toast][data-styled='true'] {
+  background-color: color-mix(in oklab, var(--glass-src-background) 96%, transparent);
+}
+
+/* Monaco merge-conflict blocks and inline blame (editor/browser/monaco). */
+.em-conflict-current {
+  background: color-mix(in srgb, var(--foreground-diff-added) 18%, transparent);
+}
+.em-conflict-incoming {
+  background: color-mix(in srgb, #3b82f6 18%, transparent);
+}
+.em-conflict-marker {
+  background: color-mix(in srgb, var(--foreground-muted) 22%, transparent);
+}
+.em-inline-blame {
+  color: var(--foreground-passive);
+  font-style: italic;
+  margin-left: 3em;
 }

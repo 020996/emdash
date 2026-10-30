@@ -191,6 +191,26 @@ export class CheckoutResource {
     return result;
   }
 
+  async continueOperation(context: CheckoutMutationContext<'continueOperation'>) {
+    const result = await this.execute(() =>
+      this.commands.continueOperation(context.input.operation)
+    );
+    this.syncChanged();
+    return result;
+  }
+
+  async switchBranch(context: CheckoutMutationContext<'switchBranch'>) {
+    const result = await this.execute(() => this.commands.switchBranch(context.input.branch));
+    this.syncChanged();
+    return result;
+  }
+
+  async abortOperation(context: CheckoutMutationContext<'abortOperation'>) {
+    const result = await this.execute(() => this.commands.abortOperation(context.input.operation));
+    this.syncChanged();
+    return result;
+  }
+
   async push(options: Parameters<GitCheckout['push']>[0], context: GitOperationContext) {
     const result = await this.execute(() => this.commands.push(options, context));
     if (result.success) {
@@ -218,6 +238,10 @@ export class CheckoutResource {
   invalidateRepositoryHistory(): void {
     this.invalidate('status');
     this.invalidate('head');
+    this.fileContents.invalidate('all', 'refs');
+  }
+
+  invalidateRefContents(): void {
     this.fileContents.invalidate('all', 'refs');
   }
 

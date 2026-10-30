@@ -1,4 +1,4 @@
-import { err, type Result } from '@emdash/shared';
+import { err, isDeepEqual, type Result } from '@emdash/shared';
 import { makeAutoObservable, observable } from 'mobx';
 import type { TaskScopedStoreContext } from '@core/features/tasks/contributions/browser/task-stores';
 import { taskPersistentStoreContributions } from '@core/manifests/browser/task-persistent-stores';
@@ -136,10 +136,16 @@ export class TaskStore implements TaskState {
   }): void {
     this.workspacePath = projection?.path ?? this.workspacePath;
     this.workspaceObservedStatus = projection?.observedStatus ?? null;
-    this.workspaceCreation = projection?.creation ?? null;
-    this.workspaceCreateOutcome = projection?.lastCreateOutcome ?? null;
-    this.workspaceLifecycle = projection?.lifecycle ?? null;
-    this.workspaceObservedPr = projection?.observedPr ?? null;
+    // Deep observables: reassigning an equal object still notifies every reader, and this runs
+    // for every task on each task-list snapshot.
+    const creation = projection?.creation ?? null;
+    if (!isDeepEqual(this.workspaceCreation, creation)) this.workspaceCreation = creation;
+    const outcome = projection?.lastCreateOutcome ?? null;
+    if (!isDeepEqual(this.workspaceCreateOutcome, outcome)) this.workspaceCreateOutcome = outcome;
+    const lifecycle = projection?.lifecycle ?? null;
+    if (!isDeepEqual(this.workspaceLifecycle, lifecycle)) this.workspaceLifecycle = lifecycle;
+    const observedPr = projection?.observedPr ?? null;
+    if (!isDeepEqual(this.workspaceObservedPr, observedPr)) this.workspaceObservedPr = observedPr;
   }
 
   get<Token extends ScopedStoreToken<unknown>>(token: Token): ScopedStoreValue<Token> {

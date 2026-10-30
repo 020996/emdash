@@ -2,6 +2,7 @@ import { encodeResourceUri } from '@emdash/core/primitives/path/api';
 import {
   shortName,
   type CheckoutHeadState,
+  type CheckoutOperation,
   type CheckoutStatusState,
   type GitChange,
 } from '@emdash/core/runtimes/git/api';
@@ -102,6 +103,8 @@ export class GitCheckoutStore {
       fileChanges: computed,
       stagedFileChanges: computed,
       unstagedFileChanges: computed,
+      conflictedChanges: computed,
+      resolvableOperation: computed,
       totalLinesAdded: computed,
       totalLinesDeleted: computed,
       hasData: computed,
@@ -203,11 +206,26 @@ export class GitCheckoutStore {
   }
 
   get stagedFileChanges(): GitChange[] {
-    return this.stagedChanges;
+    return this.withoutConflicts(this.stagedChanges);
   }
 
   get unstagedFileChanges(): GitChange[] {
-    return this.unstagedChanges;
+    return this.withoutConflicts(this.unstagedChanges);
+  }
+
+  /** Unmerged files; listed in the Merge Changes group instead of staged/unstaged. */
+  get conflictedChanges(): GitChange[] {
+    const status = this.status;
+    if (status?.kind !== 'ok') return [];
+    return Object.values(status.entries)
+      .filter((entry) => entry.isConflicted)
+      .map((entry) => ({ path: entry.path, status: 'conflicted', additions: 0, deletions: 0 }));
+  }
+
+  /** In-progress operation that `--continue` / `--abort` can conclude. */
+  get resolvableOperation(): Exclude<CheckoutOperation, 'none' | 'bisect'> | null {
+    const operation = this.status?.kind === 'ok' ? this.status.operation : 'none';
+    return operation === 'none' || operation === 'bisect' ? null : operation;
   }
 
   get totalLinesAdded(): number {
@@ -335,6 +353,27 @@ export class GitCheckoutStore {
     return result.success ? ok() : err(result.error);
   }
 
+  async continueOperation() {
+    const operation = this.resolvableOperation;
+    if (!operation) return ok();
+    const model = await this.requireModel();
+    const staged = await settleMutation(model.mutations.stageAll({}));
+    if (!staged.success) return err(staged.error);
+    return settleMutation(model.mutations.continueOperation({ operation }));
+  }
+
+  async switchBranch(branch: string) {
+    const model = await this.requireModel();
+    return settleMutation(model.mutations.switchBranch({ branch }));
+  }
+
+  async abortOperation() {
+    const operation = this.resolvableOperation;
+    if (!operation) return ok();
+    const model = await this.requireModel();
+    return settleMutation(model.mutations.abortOperation({ operation }));
+  }
+
   async push() {
     const client = await getSourceControlClient();
     // Null push remote (no remotes) degrades to a push without an explicit
@@ -432,6 +471,12 @@ export class GitCheckoutStore {
       client.checkout.pull,
       checkoutSelector(this.workspaceId)
     );
+  }
+
+  private withoutConflicts(changes: GitChange[]): GitChange[] {
+    if (this.conflictedChanges.length === 0) return changes;
+    const conflicted = new Set(this.conflictedChanges.map((change) => change.path));
+    return changes.filter((change) => !conflicted.has(change.path));
   }
 
   private get status(): CheckoutStatusState | null {

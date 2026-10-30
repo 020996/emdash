@@ -461,9 +461,16 @@ export function parseMarkdownToBlocks(
  * @param blocks - Block array to transform (not mutated; returns a new array).
  */
 export function flattenBlockHeadings(blocks: Block[]): Block[] {
-  return blocks.map((b) =>
+  // Cached per input so flattened heading blocks keep their identity and hit block layout memos.
+  const cached = flattenedHeadings.get(blocks);
+  if (cached) return cached;
+  const flattened = blocks.map((b) =>
     b.kind === 'prose' && b.variant !== 'body' && b.variant !== 'list-item' && b.variant !== 'quote'
       ? { ...b, variant: 'body' as const }
       : b
   );
+  flattenedHeadings.set(blocks, flattened);
+  return flattened;
 }
+
+const flattenedHeadings = new WeakMap<Block[], Block[]>();

@@ -62,6 +62,9 @@ vi.mock('@core/primitives/navigation/browser/navigation-hooks', () => ({
   useCurrentViewParams: () => ({ params: { projectId: 'project-1' } }),
   useWorkspaceSlots: () => ({ currentView: 'project' }),
 }));
+vi.mock('@core/primitives/navigation/browser/navigation-selectors', () => ({
+  getNavigation: () => ({ currentRef: { viewId: 'project', params: { projectId: 'project-1' } } }),
+}));
 vi.mock('@core/primitives/view-scopes/react', () => ({
   useViewScope: mocks.useViewScope,
   ViewScopeInstanceProvider: ({ children }: { children: ReactNode }) => children,

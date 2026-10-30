@@ -293,6 +293,9 @@ export class FrontendPty {
   }
 
   setTheme(theme?: SessionTheme): void {
+    // Every remount re-applies the same theme; rebuilding it makes xterm restyle and redraw.
+    // App-wide colour changes go through refreshTheme().
+    if (theme === this.theme) return;
     this.theme = theme;
     this.terminal.options.theme = buildTheme(theme);
     this.applyElementTheme(theme);

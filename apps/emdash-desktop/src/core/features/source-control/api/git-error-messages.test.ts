@@ -5,6 +5,7 @@ import {
   formatFetchErrorDetail,
   formatPullErrorDetail,
   formatPushErrorDetail,
+  formatSwitchBranchErrorDetail,
 } from './git-error-messages';
 
 describe('formatCloneErrorDetail', () => {
@@ -85,5 +86,27 @@ describe('formatPullErrorDetail', () => {
     expect(formatPullErrorDetail({ type: 'diverged', message: 'branches diverged' })).toBe(
       'Local and remote branches have diverged.'
     );
+  });
+
+  it('names the worktree that already holds a branch on switch', () => {
+    expect(
+      formatSwitchBranchErrorDetail('x', {
+        type: 'git_error',
+        message: 'Command failed',
+        stderr: "fatal: 'x' is already used by worktree at '/tmp/wt-x'\n",
+      })
+    ).toBe('Branch x is already checked out in another worktree: /tmp/wt-x');
+    expect(
+      formatSwitchBranchErrorDetail('x', {
+        type: 'git_error',
+        stderr: "fatal: 'x' is already checked out at '/tmp/wt-x'",
+      })
+    ).toBe('Branch x is already checked out in another worktree: /tmp/wt-x');
+    expect(
+      formatSwitchBranchErrorDetail('nope', {
+        type: 'git_error',
+        stderr: 'hint: something\nfatal: invalid reference: nope\n',
+      })
+    ).toBe('invalid reference: nope');
   });
 });

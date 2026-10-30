@@ -1681,7 +1681,9 @@ export function ChatRoot(props: ChatRootProps) {
                   >
                     <For each={visible()}>
                       {(unitIndex) => {
-                        const u = () => units().at(unitIndex);
+                        // Memoized so rows whose unit is unchanged skip re-measure and block remount
+                        // when another row (the streaming one) updates.
+                        const u = createMemo(() => units().at(unitIndex));
                         const isActiveTurn = () => {
                           const unit = u();
                           return unit ? activeTurnItemIds().has(unit.itemId) : false;

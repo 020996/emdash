@@ -165,10 +165,12 @@ export class AcpChatStore {
       unconfirmedPromptIds: observable.shallow,
       commands: computed,
       mcpServers: computed,
-      permissionQueue: computed,
-      queuedPrompts: computed,
+      // Recomputed on every streamed chunk; struct keeps the composer from re-rendering
+      // when the derived values are unchanged.
+      permissionQueue: computed.struct,
+      queuedPrompts: computed.struct,
       usage: computed,
-      affordances: computed,
+      affordances: computed.struct,
       isEmpty: computed,
       submitPrompt: action,
       stop: action,
