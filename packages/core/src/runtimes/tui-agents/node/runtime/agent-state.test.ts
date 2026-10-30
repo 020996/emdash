@@ -48,6 +48,21 @@ describe('TuiAgentStates', () => {
     });
   });
 
+  it('drops working back to idle when the user interrupts with Esc or Ctrl+C', () => {
+    const { tracker, agentStates } = createTracker();
+    const start = { kind: 'status', type: 'start' } as const;
+
+    tracker.applyCanonicalEvent('conv-1', 'claude', start);
+    tracker.markInputSubmitted('conv-1', null, '\x1b[A');
+    expect(peek(agentStates.states.list)['conv-1']?.status).toBe('working');
+    tracker.markInputSubmitted('conv-1', null, '\x1b');
+    expect(peek(agentStates.states.list)['conv-1']?.status).toBe('idle');
+
+    tracker.applyCanonicalEvent('conv-1', 'claude', start);
+    tracker.markInputSubmitted('conv-1', null, '\x03');
+    expect(peek(agentStates.states.list)['conv-1']?.status).toBe('idle');
+  });
+
   it('marks input submitted as working only when the provider lacks a start hook', () => {
     const { tracker, agentStates } = createTracker();
 
