@@ -60,6 +60,12 @@ export class GitCheckoutRuntime {
           revert: (context) => this.run(context.key, (resource) => resource.revert(context)),
           revertAll: (context) => this.run(context.key, (resource) => resource.revertAll(context)),
           commit: (context) => this.run(context.key, (resource) => resource.commit(context)),
+          continueOperation: (context) =>
+            this.run(context.key, (resource) => resource.continueOperation(context)),
+          switchBranch: (context) =>
+            this.run(context.key, (resource) => resource.switchBranch(context)),
+          abortOperation: (context) =>
+            this.run(context.key, (resource) => resource.abortOperation(context)),
         },
       }
     );

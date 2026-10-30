@@ -81,6 +81,18 @@ export function formatPullErrorDetail(error: PullLikeError, opts?: GitErrorMessa
   }
 }
 
+/** `git switch` failure as one readable line; names the worktree that already holds the branch. */
+export function formatSwitchBranchErrorDetail(
+  branch: string,
+  error: { type: string; message?: string; stderr?: string }
+): string {
+  const text = error.stderr || error.message || error.type;
+  const worktree = /already (?:used by worktree|checked out) at '([^']+)'/.exec(text)?.[1];
+  if (worktree) return `Branch ${branch} is already checked out in another worktree: ${worktree}`;
+  const line = text.split('\n').find((l) => /^(fatal|error):/.test(l.trim()));
+  return (line ?? text).trim().replace(/^(fatal|error):\s*/, '');
+}
+
 function formatRemoteAccessError(
   error: GitRemoteAccessError,
   opts?: GitErrorMessageOptions

@@ -37,6 +37,9 @@ import {
   pushJobInputSchema,
 } from './schemas';
 
+/** Operations that `git <op> --continue` / `--abort` can conclude. */
+const resolvableOperationSchema = z.enum(['merge', 'rebase', 'cherry-pick', 'revert']);
+
 export const gitCheckoutContract = defineContract({
   model: liveModel({
     key: checkoutSelectorSchema,
@@ -67,6 +70,23 @@ export const gitCheckoutContract = defineContract({
         input: z.object({ message: z.string(), options: commitOptionsSchema.optional() }),
         data: z.object({ hash: z.string() }),
         error: commitErrorSchema,
+      }),
+      continueOperation: mutation({
+        input: z.object({ operation: resolvableOperationSchema }),
+        data: z.void(),
+        error: gitCommandErrorSchema,
+      }),
+      abortOperation: mutation({
+        input: z.object({ operation: resolvableOperationSchema }),
+        data: z.void(),
+        error: gitCommandErrorSchema,
+      }),
+      /** `git switch <branch>`; a remote-only name is checked out as a new tracking branch. */
+      switchBranch: mutation({
+        // No leading '-' so the name can never be parsed as an option.
+        input: z.object({ branch: z.string().regex(/^[^-]/) }),
+        data: z.void(),
+        error: gitCommandErrorSchema,
       }),
     },
   }),

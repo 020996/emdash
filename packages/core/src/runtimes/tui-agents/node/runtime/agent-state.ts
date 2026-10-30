@@ -115,6 +115,14 @@ export class TuiAgentStates {
     /** When false, keep Enter→working even if the provider declares a start hook. */
     startHooksActive = true
   ): void {
+    // A bare Esc / Ctrl+C interrupts the running turn, and providers fire no stop hook for it.
+    if (
+      (data === '\x1b' || data === '\x03') &&
+      this.current(conversationId)?.status === 'working'
+    ) {
+      this.setStatus(conversationId, { status: 'idle', source: 'input' });
+      return;
+    }
     if (!data.includes('\r')) return;
     if (
       startHooksActive &&

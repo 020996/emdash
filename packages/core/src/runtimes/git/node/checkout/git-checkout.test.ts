@@ -574,4 +574,57 @@ describe('GitCheckout', () => {
       await cleanup();
     }
   });
+
+  it('aborts and continues a conflicted merge', async () => {
+    const { repo, checkout, cleanup } = await makeCheckout();
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: repo });
+    const conflict = async () => {
+      await git('checkout', '-B', 'topic');
+      await writeFile(path.join(repo, 'tracked.txt'), 'topic\n');
+      await git('commit', '-am', 'topic');
+      await git('checkout', 'main');
+      await writeFile(path.join(repo, 'tracked.txt'), 'main\n');
+      await git('commit', '-am', 'main');
+      await git('merge', 'topic').catch(() => undefined);
+    };
+    try {
+      await conflict();
+      let status = okStatus(await checkout.getStatus());
+      expect(status.operation).toBe('merge');
+      expect(status.summary.conflicted).toBe(1);
+
+      expect((await checkout.abortOperation('merge')).success).toBe(true);
+      expect(okStatus(await checkout.getStatus()).operation).toBe('none');
+
+      await git('merge', 'topic').catch(() => undefined);
+      await writeFile(path.join(repo, 'tracked.txt'), 'both\n');
+      await git('add', '.');
+      expect((await checkout.continueOperation('merge')).success).toBe(true);
+      status = okStatus(await checkout.getStatus());
+      expect(status.operation).toBe('none');
+      const { stdout } = await git('rev-list', '--parents', '-n', '1', 'HEAD');
+      expect(stdout.trim().split(' ')).toHaveLength(3);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it('switches to a local branch and to a remote-only branch', async () => {
+    const { repo, checkout, cleanup } = await makeCheckout();
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: repo });
+    try {
+      await git('branch', 'other');
+      expect((await checkout.switchBranch('other')).success).toBe(true);
+      expect((await git('branch', '--show-current')).stdout.trim()).toBe('other');
+
+      await git('remote', 'add', 'origin', repo);
+      await git('update-ref', 'refs/remotes/origin/remote-only', 'HEAD');
+      expect((await checkout.switchBranch('remote-only')).success).toBe(true);
+      expect((await git('branch', '--show-current')).stdout.trim()).toBe('remote-only');
+
+      expect((await checkout.switchBranch('missing')).success).toBe(false);
+    } finally {
+      await cleanup();
+    }
+  });
 });

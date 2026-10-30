@@ -244,12 +244,12 @@ export class ConversationManagerStore implements Disposable {
   private handleTuiSessionListChanged(list: TuiSessionList): void {
     runInAction(() => {
       this._hasObservedTuiSessions = true;
-      this.activeTuiSessionIds.clear();
-      for (const [conversationId, session] of Object.entries(list)) {
-        if (session.status === 'starting' || session.status === 'running') {
-          this.activeTuiSessionIds.add(conversationId);
-        }
-      }
+      syncSet(
+        this.activeTuiSessionIds,
+        Object.entries(list)
+          .filter(([, session]) => session.status === 'starting' || session.status === 'running')
+          .map(([conversationId]) => conversationId)
+      );
     });
   }
 
@@ -290,12 +290,12 @@ export class ConversationManagerStore implements Disposable {
   private handleAcpSessionListChanged(list: Record<string, SessionSummary>): void {
     runInAction(() => {
       this._hasObservedAcpSessions = true;
-      this.activeAcpSessionIds.clear();
-      for (const [conversationId, session] of Object.entries(list)) {
-        if (session.lifecycle !== 'closed') {
-          this.activeAcpSessionIds.add(conversationId);
-        }
-      }
+      syncSet(
+        this.activeAcpSessionIds,
+        Object.entries(list)
+          .filter(([, session]) => session.lifecycle !== 'closed')
+          .map(([conversationId]) => conversationId)
+      );
     });
   }
 
@@ -734,4 +734,12 @@ export class ConversationStore {
   dispose() {
     // Session is managed by ConversationManagerStore.sessions — nothing to do here.
   }
+}
+
+/** Clearing and refilling an observable set notifies every `has()` reader even when membership is
+ * unchanged; session lists update on every streamed chunk, so only apply the difference. */
+function syncSet(set: Set<string>, ids: string[]): void {
+  const next = new Set(ids);
+  for (const id of [...set]) if (!next.has(id)) set.delete(id);
+  for (const id of next) set.add(id);
 }

@@ -57,9 +57,13 @@ function createConversationListView(conversations: ConversationManagerStore) {
     source: {
       kind: 'sync',
       items: () =>
-        Array.from(conversations.conversations.values()).sort(
-          (left, right) => lastInteractionTimestamp(right) - lastInteractionTimestamp(left)
-        ),
+        // Timestamps parsed once per item, not twice per comparison.
+        Array.from(conversations.conversations.values(), (conversation) => ({
+          conversation,
+          at: lastInteractionTimestamp(conversation),
+        }))
+          .sort((left, right) => right.at - left.at)
+          .map(({ conversation }) => conversation),
     },
     sections: {
       by: (conversation) =>

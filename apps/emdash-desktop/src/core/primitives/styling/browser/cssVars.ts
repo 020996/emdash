@@ -9,13 +9,26 @@ export function cssVar(name: string): string {
  * Returns the original string unchanged if the canvas context is unavailable.
  */
 export function cssColorToHex(cssColor: string): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 1;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return cssColor;
-  ctx.fillStyle = cssColor.trim();
-  ctx.fillRect(0, 0, 1, 1);
-  const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+  const cached = hexCache.get(cssColor);
+  if (cached) return cached;
+  // One CPU-backed canvas: a GPU canvas stalls ~15ms per getImageData readback, and every
+  // editor/terminal mount converts dozens of theme colors.
+  pixelCtx ??= Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext(
+    '2d',
+    { willReadFrequently: true }
+  );
+  if (!pixelCtx) return cssColor;
+  pixelCtx.clearRect(0, 0, 1, 1);
+  // An unparseable color keeps the previous fillStyle; reset to the fresh-canvas default.
+  pixelCtx.fillStyle = '#000';
+  pixelCtx.fillStyle = cssColor.trim();
+  pixelCtx.fillRect(0, 0, 1, 1);
+  const [r, g, b, a] = pixelCtx.getImageData(0, 0, 1, 1).data;
   const hex = (n: number) => n.toString(16).padStart(2, '0');
-  return a < 255 ? `#${hex(r)}${hex(g)}${hex(b)}${hex(a)}` : `#${hex(r)}${hex(g)}${hex(b)}`;
+  const result = a < 255 ? `#${hex(r)}${hex(g)}${hex(b)}${hex(a)}` : `#${hex(r)}${hex(g)}${hex(b)}`;
+  hexCache.set(cssColor, result);
+  return result;
 }
+
+let pixelCtx: CanvasRenderingContext2D | null | undefined;
+const hexCache = new Map<string, string>();

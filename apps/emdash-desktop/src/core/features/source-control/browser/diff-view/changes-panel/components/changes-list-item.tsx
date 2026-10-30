@@ -71,6 +71,11 @@ export function ChangeStatusAffordance({ change, actions }: ChangeStatusAffordan
         </span>
       )}
       <DiffLineStats additions={change.additions} deletions={change.deletions} />
+      {change.status === 'conflicted' && (
+        <span className="text-xs font-semibold text-foreground-conflict" title="Conflicted">
+          !
+        </span>
+      )}
     </div>
   );
 }

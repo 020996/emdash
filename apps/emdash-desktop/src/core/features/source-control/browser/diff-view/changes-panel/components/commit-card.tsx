@@ -1,7 +1,7 @@
-import { Input, SplitButton, toast } from '@emdash/ui/react/primitives';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { Button, Input, SplitButton, toast } from '@emdash/ui/react/primitives';
+import { ArrowUp, CheckCircle, Loader2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { getGitRepositoryStore } from '@core/features/source-control/api/browser/stores/source-control-selectors';
 import { getTaskGitCheckoutStore } from '@core/features/source-control/api/browser/stores/task-source-control-selectors';
 import { formatPushErrorDetail } from '@core/features/source-control/api/git-error-messages';
@@ -36,6 +36,18 @@ export const CommitCard = observer(function CommitCard() {
   const hasPRs = changesView?.expandedSections.pullRequests ?? false;
   const [commitMessage, setCommitMessage] = useState('');
   const [phase, setPhase] = useState<CommitPhase>('idle');
+  // A pending "back to idle" from the last action must not reset a newer one mid-flight.
+  const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const begin = (next: CommitPhase) => {
+    clearTimeout(idleTimer.current);
+    setPhase(next);
+  };
+  /** Thrown errors (model not ready, job failure) would otherwise leave the card stuck in flight. */
+  const guarded = (work: () => Promise<void>) => () =>
+    void work().catch((error: unknown) => {
+      toast.error(`Git action failed: ${error instanceof Error ? error.message : String(error)}`);
+      setPhase('idle');
+    });
   const autoStage = git.stagedFileChanges.length === 0;
   const isInFlight = phase !== 'idle';
 
@@ -44,8 +56,6 @@ export const CommitCard = observer(function CommitCard() {
   const repositoryUrl = repository?.pullRequestRepositoryUrl ?? null;
 
   if (!diffView || !changesView) return null;
-  if (autoStage && !git.unstagedFileChanges.length) return null;
-
   const branchName = getTaskGitCheckoutStore(projectId, taskId)?.branchName;
   const hasOpenPr = taskView.prStore?.pullRequests.some((p) => p.status === 'open') ?? false;
   const canCreatePr =
@@ -67,7 +77,7 @@ export const CommitCard = observer(function CommitCard() {
   };
 
   const doCommit = async () => {
-    setPhase('committing');
+    begin('committing');
     if (!(await stageAllIfNeeded())) return;
     const result = await git.commit(commitMessage);
     if (!result.success) {
@@ -80,11 +90,23 @@ export const CommitCard = observer(function CommitCard() {
       changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
     }
     setPhase('commit-only-done');
-    setTimeout(() => setPhase('idle'), 3000);
+    idleTimer.current = setTimeout(() => setPhase('idle'), 3000);
+  };
+
+  const doPush = async () => {
+    begin('pushing');
+    const pushResult = await git.push();
+    if (!pushResult.success) {
+      toast.error(`Failed to push: ${formatPushErrorDetail(pushResult.error)}`);
+      setPhase('idle');
+      return;
+    }
+    setPhase('pushed');
+    idleTimer.current = setTimeout(() => setPhase('idle'), 3000);
   };
 
   const doCommitAndPush = async () => {
-    setPhase('committing');
+    begin('committing');
     if (!(await stageAllIfNeeded())) return;
     const commitResult = await git.commit(commitMessage);
     if (!commitResult.success) {
@@ -98,19 +120,11 @@ export const CommitCard = observer(function CommitCard() {
     }
     setPhase('committed');
     await new Promise((r) => setTimeout(r, 1000));
-    setPhase('pushing');
-    const pushResult = await git.push();
-    if (!pushResult.success) {
-      toast.error(`Failed to push: ${formatPushErrorDetail(pushResult.error)}`);
-      setPhase('idle');
-      return;
-    }
-    setPhase('pushed');
-    setTimeout(() => setPhase('idle'), 3000);
+    await doPush();
   };
 
   const doCommitAndCreatePr = async () => {
-    setPhase('committing');
+    begin('committing');
     if (!(await stageAllIfNeeded())) return;
     const commitResult = await git.commit(commitMessage);
     if (!commitResult.success) {
@@ -135,9 +149,30 @@ export const CommitCard = observer(function CommitCard() {
     });
   };
 
+  if (autoStage && !git.unstagedFileChanges.length) {
+    if (git.aheadCount === 0 && phase === 'idle') return null;
+    return (
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-border px-3 pt-2 pb-3">
+        {phase === 'pushing' ? (
+          <StatusRow icon={<Loader2 className="size-4 animate-spin" />} label="Pushing…" />
+        ) : phase === 'pushed' ? (
+          <StatusRow
+            icon={<CheckCircle className="size-4 text-foreground-success" />}
+            label="Pushed"
+          />
+        ) : (
+          <Button size="sm" className="w-full" onClick={guarded(doPush)}>
+            <ArrowUp className="size-3.5" />
+            Push {git.aheadCount} {git.aheadCount === 1 ? 'commit' : 'commits'}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   const actions = [
-    { id: 'commit', label: 'Commit', action: () => void doCommit() },
-    { id: 'commit-push', label: 'Commit & Push', action: () => void doCommitAndPush() },
+    { id: 'commit', label: 'Commit', action: guarded(doCommit) },
+    { id: 'commit-push', label: 'Commit & Push', action: guarded(doCommitAndPush) },
     ...(canCreatePr
       ? [
           {
@@ -146,7 +181,7 @@ export const CommitCard = observer(function CommitCard() {
               repository?.providerRepository?.provider === 'gitlab'
                 ? 'Commit & Create MR'
                 : 'Commit & Create PR',
-            action: () => void doCommitAndCreatePr(),
+            action: guarded(doCommitAndCreatePr),
           },
         ]
       : []),

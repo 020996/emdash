@@ -1,4 +1,6 @@
+import { computed } from 'mobx';
 import { observer } from 'mobx-react-lite';
+import { useMemo } from 'react';
 import { projectViewDef } from '@core/features/projects/contributions/views';
 import { useAppSettingsKey } from '@core/features/settings/api/browser/use-app-settings-key';
 import {
@@ -19,11 +21,8 @@ import {
 } from '@core/features/workbench/api/browser/task-composition-selectors';
 import { TaskSidebarTrailingSlot } from '@core/features/workbench/browser/sidebar/task-sidebar-agent-status';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
-import {
-  useNavigate,
-  useViewParams,
-  useWorkspaceSlots,
-} from '@core/primitives/navigation/browser/navigation-hooks';
+import { useNavigate } from '@core/primitives/navigation/browser/navigation-hooks';
+import { getNavigation } from '@core/primitives/navigation/browser/navigation-selectors';
 import { cn } from '@core/primitives/styling/browser/cn';
 import { selectCurrentPr } from '@root/src/core/services/pull-requests/api';
 import { PrBadge } from '@root/src/core/services/pull-requests/browser/components/pr-badge';
@@ -44,11 +43,18 @@ export const SidebarTaskItem = observer(function SidebarTaskItem({
   const { navigate } = useNavigate();
   const openDeleteTask = useOpenModal('deleteTaskModal');
 
-  const { currentView } = useWorkspaceSlots();
-  const params = useViewParams(taskViewDef);
   const { value: interfaceSettings } = useAppSettingsKey('interface');
-  const isActive =
-    currentView === 'task' && params?.taskId === taskId && params.projectId === projectId;
+  // Per-row computed: navigation re-renders only the rows whose active state flips.
+  const isActive = useMemo(
+    () =>
+      computed(() => {
+        const { viewId, params } = getNavigation().currentRef;
+        return (
+          viewId === taskViewDef.id && params.taskId === taskId && params.projectId === projectId
+        );
+      }),
+    [projectId, taskId]
+  ).get();
 
   const task = getTaskStore(projectId, taskId)!;
   const taskManager = getTaskManagerStore(projectId);

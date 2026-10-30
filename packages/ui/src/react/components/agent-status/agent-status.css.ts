@@ -67,7 +67,9 @@ export const dot = Array.from({ length: DOT_COUNT }, (_, index) =>
         transformOrigin: 'center',
         animationName: dotShimmer,
         animationDuration: `${PERIOD_MS}ms`,
-        animationTimingFunction: 'cubic-bezier(0.45, 0, 0.2, 1)',
+        // SVG children repaint every frame (no compositor path); stepping cuts that to ~7 fps,
+        // which took the GPU process from ~40% to ~15% with three spinners on screen.
+        animationTimingFunction: 'steps(8)',
         animationIterationCount: 'infinite',
         animationDelay: `${-((DOT_COUNT - index) % DOT_COUNT) * (PERIOD_MS / DOT_COUNT)}ms`,
         '@media': {

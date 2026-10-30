@@ -19,7 +19,7 @@ import {
 } from '@core/features/source-control/api/browser/client';
 import { getGitRepositoryStore } from '@core/features/source-control/api/browser/stores/source-control-selectors';
 import { CommitCard } from '@core/features/source-control/browser/diff-view/changes-panel/components/commit-card';
-import { GitStatusSection } from '@core/features/source-control/browser/diff-view/changes-panel/git-status-section';
+import { MergeChangesSection } from '@core/features/source-control/browser/diff-view/changes-panel/merge-changes-section';
 import {
   PullRequestsSectionBody,
   PullRequestsSectionHeader,
@@ -254,9 +254,14 @@ const ChangesPanelSections = observer(function ChangesPanelSections({
     },
   ];
 
+  // A collapsed PR section docks at the bottom; expanding it moves it back into the group.
+  const dockedPrSection = expanded.pullRequests ? undefined : sections[2];
+  const groupSections = dockedPrSection ? sections.slice(0, 2) : sections;
+
   return (
     <div className="flex h-full flex-col">
       <CommitCard />
+      <MergeChangesSection />
       <Resizable.Group
         orientation="vertical"
         className="min-h-0 flex-1"
@@ -268,7 +273,7 @@ const ChangesPanelSections = observer(function ChangesPanelSections({
         onLayoutChanged={handleLayoutChanged}
         disableCursor
       >
-        {sections.map(({ id, header, body }) => (
+        {groupSections.map(({ id, header, body }) => (
           // Fragments create no DOM nodes, so headers, panels, and handles
           // stay direct DOM children of the Group as the library requires.
           <Fragment key={id}>
@@ -282,7 +287,7 @@ const ChangesPanelSections = observer(function ChangesPanelSections({
           </Fragment>
         ))}
       </Resizable.Group>
-      <GitStatusSection />
+      {dockedPrSection?.header}
     </div>
   );
 });

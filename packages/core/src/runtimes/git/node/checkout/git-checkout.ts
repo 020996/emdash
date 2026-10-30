@@ -162,6 +162,21 @@ export class GitCheckout {
     }
   }
 
+  async continueOperation(operation: string): Promise<Result<void, GitCommandError>> {
+    // core.editor=true: accept the prepared message instead of opening an editor.
+    return this.commandMutation(() =>
+      this.exec.exec(['-c', 'core.editor=true', operation, '--continue'])
+    );
+  }
+
+  async switchBranch(branch: string): Promise<Result<void, GitCommandError>> {
+    return this.commandMutation(() => this.exec.exec(['switch', branch]));
+  }
+
+  async abortOperation(operation: string): Promise<Result<void, GitCommandError>> {
+    return this.commandMutation(() => this.exec.exec([operation, '--abort']));
+  }
+
   // -- Sync --------------------------------------------------------------------
 
   async push(

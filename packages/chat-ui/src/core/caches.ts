@@ -66,6 +66,11 @@ type StreamingRecord = {
   stableBlocks: Block[];
   /** Next block counter value = stableBlocks.length. */
   counter: number;
+  /** endsInsideFence(stableText), kept incrementally instead of rescanning the prefix per call. */
+  stableInsideFence: boolean;
+  /** Last input and its result: measure, render and a11y all parse the same text per update. */
+  lastText?: string;
+  lastBlocks?: Block[];
 };
 
 /**
@@ -100,11 +105,11 @@ function endsInsideFence(text: string): boolean {
  *
  * Returns 0 when no safe boundary exists (the entire tail is still growing).
  *
- * `stableText` is used to determine whether the start of `tail` is already
- * inside a code fence opened in the stable prefix.
+ * `stableInsideFence` says whether the start of `tail` is already inside a code
+ * fence opened in the stable prefix.
  */
-function findSafeStreamBoundary(stableText: string, tail: string): number {
-  let inside = endsInsideFence(stableText);
+function findSafeStreamBoundary(stableInsideFence: boolean, tail: string): number {
+  let inside = stableInsideFence;
   let lastSafe = 0;
   let i = 0;
 
@@ -260,6 +265,8 @@ export type ParseCaches = {
 export type ChatCaches = SharedCaches & ParseCaches;
 
 const HIGHLIGHT_CACHE_MAX = 200;
+// Each streamed token adds a key for the growing paragraph; evicted entries recompute identically.
+const RICH_INLINE_CACHE_MAX = 2000;
 const DIFF_CACHE_MAX = 100;
 const MERMAID_CACHE_MAX = 100;
 
@@ -292,10 +299,10 @@ export function createSharedCaches(highlighter?: ChatHighlighter): SharedCaches 
   return {
     prepareRichInline(items) {
       const key = richInlineKey(items);
-      const cached = richInlineCache.get(key);
+      const cached = lruGet(richInlineCache, key);
       if (cached) return cached;
       const prepared = rawPrepareRichInline(items);
-      richInlineCache.set(key, prepared);
+      lruSet(richInlineCache, key, prepared, RICH_INLINE_CACHE_MAX);
       return prepared;
     },
 
@@ -401,15 +408,17 @@ export function createParseCaches(
       // If the text is not an append (edit/replay), reset and treat all content
       // as a fresh growing tail with no stable prefix.
       if (!rec || !markdown.startsWith(rec.stableText)) {
-        rec = { stableText: '', stableBlocks: [], counter: 0 };
+        rec = { stableText: '', stableBlocks: [], counter: 0, stableInsideFence: false };
         streamCache.set(id, rec);
       }
+
+      if (rec.lastText === markdown && rec.lastBlocks) return rec.lastBlocks;
 
       const tail = markdown.slice(rec.stableText.length);
 
       // Find the last blank-line boundary in the tail that is outside any open
       // code fence. Everything before it can be parsed as stable settled blocks.
-      const boundary = findSafeStreamBoundary(rec.stableText, tail);
+      const boundary = findSafeStreamBoundary(rec.stableInsideFence, tail);
 
       if (boundary > 0) {
         // Parse the newly settled chunk and append to the stable prefix. These
@@ -424,6 +433,8 @@ export function createParseCaches(
           uri
         );
         rec.stableBlocks = [...rec.stableBlocks, ...newBlocks];
+        // Boundaries sit at line starts, so the chunk's fence parity continues the prefix's.
+        rec.stableInsideFence = rec.stableInsideFence !== endsInsideFence(settledChunk);
         rec.stableText += settledChunk;
         rec.counter += newBlocks.length;
       }
@@ -441,7 +452,11 @@ export function createParseCaches(
           )
         : [];
 
-      return growingBlocks.length > 0 ? [...rec.stableBlocks, ...growingBlocks] : rec.stableBlocks;
+      const blocks =
+        growingBlocks.length > 0 ? [...rec.stableBlocks, ...growingBlocks] : rec.stableBlocks;
+      rec.lastText = markdown;
+      rec.lastBlocks = blocks;
+      return blocks;
     },
 
     settledBlockCount(id) {

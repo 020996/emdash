@@ -508,6 +508,15 @@ export class TaskComposition {
     return terminalId;
   }
 
+  /** Opens the terminal drawer (⌘J) on an existing terminal's tab. */
+  revealTerminal(terminalId: string): void {
+    this.chrome.commands.openTerminalDrawer();
+    runInAction(() => {
+      this.terminalTabs.setActiveTab(terminalId);
+      this.setTerminalDrawerActiveItem({ kind: 'terminal', id: terminalId });
+    });
+  }
+
   /** Splits the active drawer terminal: a new terminal opens beside it (VS Code style). */
   async splitTerminal(anchorId: string): Promise<string | undefined> {
     const terminalId = await this.createDefaultTerminal();

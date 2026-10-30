@@ -122,4 +122,46 @@ describe('classifyGitWatchEvents', () => {
       remotes: false,
     });
   });
+
+  it('scopes branch and remote ref changes to the worktrees that own or track them', () => {
+    const gitCommonDir = path.join(path.sep, 'repo', '.git');
+    const worktrees = [
+      {
+        id: 'main',
+        gitDir: gitCommonDir,
+        worktree: path.join(path.sep, 'repo'),
+        branchRef: 'refs/heads/main',
+        upstreamRef: 'refs/remotes/origin/main',
+      },
+      {
+        id: 'feature',
+        gitDir: path.join(gitCommonDir, 'worktrees', 'feature'),
+        worktree: path.join(path.sep, 'feature'),
+        branchRef: 'refs/heads/feature',
+        upstreamRef: null,
+      },
+      {
+        id: 'unknown',
+        gitDir: path.join(gitCommonDir, 'worktrees', 'unknown'),
+        worktree: path.join(path.sep, 'unknown'),
+      },
+    ];
+
+    const branch = classifyGitWatchEvents(
+      [{ kind: 'update', path: path.join(gitCommonDir, 'refs', 'heads', 'feature') }],
+      { gitCommonDir, worktrees }
+    );
+    expect(branch.worktrees.get('feature')).toEqual({ status: true, head: true });
+    expect(branch.worktrees.has('main')).toBe(false);
+    expect(branch.worktrees.get('unknown')).toEqual({ status: true, head: true });
+
+    const remote = classifyGitWatchEvents(
+      [{ kind: 'update', path: path.join(gitCommonDir, 'refs', 'remotes', 'origin', 'main') }],
+      { gitCommonDir, worktrees }
+    );
+    expect(remote.repo.refs).toBe(true);
+    expect(remote.worktrees.get('main')).toEqual({ status: false, head: true });
+    expect(remote.worktrees.has('feature')).toBe(false);
+    expect(remote.worktrees.get('unknown')).toEqual({ status: false, head: true });
+  });
 });

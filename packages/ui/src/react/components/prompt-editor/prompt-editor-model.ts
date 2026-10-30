@@ -444,9 +444,10 @@ function createEditor(model: PromptEditorModel, content: JSONContent): Editor {
         return parts.join('\n').replace(/\n+$/, '');
       },
     },
-    onUpdate({ editor: updated }) {
+    onUpdate() {
       model.publish();
-      model.view?.options.onChange?.(serializeDoc(updated.state.doc));
+      // publish() just serialized this same document into the snapshot.
+      model.view?.options.onChange?.(model.getText());
     },
     element: null,
     content,

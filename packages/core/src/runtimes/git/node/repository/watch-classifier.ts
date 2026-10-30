@@ -13,7 +13,15 @@ export type WorktreeWatchEffects = {
 
 export type GitLayout = {
   gitCommonDir: string;
-  worktrees: { id: string; gitDir: string; worktree: string }[];
+  worktrees: {
+    id: string;
+    gitDir: string;
+    worktree: string;
+    /** Checked-out branch ref; null when detached, undefined when not yet known. */
+    branchRef?: string | null;
+    /** Upstream tracking ref; null when none, undefined when unknown or unresolved. */
+    upstreamRef?: string | null;
+  }[];
 };
 
 export type GitWatchClassification = {
@@ -54,12 +62,19 @@ export function classifyGitWatchEvents(
     const commonRel = relativeInside(gitCommonDir, eventPath);
     if (commonRel !== null) {
       classifyCommonGitPath(commonRel, repo);
-      if (commonGitPathAffectsWorktreeHead(commonRel)) {
+      if (commonRel.startsWith('refs/heads/') || commonRel.startsWith('refs/remotes/')) {
+        // A branch ref only matters to the worktree on that branch or tracking it.
+        for (const worktree of normalizedWorktrees) {
+          const owns = worktree.branchRef === undefined || worktree.branchRef === commonRel;
+          const tracks = worktree.upstreamRef === undefined || worktree.upstreamRef === commonRel;
+          if (owns && commonRel.startsWith('refs/heads/')) {
+            addWorktreeEffect(worktree.id, 'status');
+          }
+          if (owns || tracks) addWorktreeEffect(worktree.id, 'head');
+        }
+      } else if (commonGitPathAffectsWorktreeHead(commonRel)) {
         addAllWorktreeEffects({
-          status:
-            commonRel.startsWith('refs/heads/') ||
-            commonRel === 'HEAD' ||
-            commonRel === 'packed-refs',
+          status: commonRel === 'HEAD' || commonRel === 'packed-refs',
           head: true,
         });
       }
@@ -102,13 +117,7 @@ function classifyCommonGitPath(rel: string, repo: RepoWatchEffects): void {
 }
 
 function commonGitPathAffectsWorktreeHead(rel: string): boolean {
-  return (
-    rel.startsWith('refs/heads/') ||
-    rel.startsWith('refs/remotes/') ||
-    rel === 'HEAD' ||
-    rel === 'config' ||
-    rel === 'packed-refs'
-  );
+  return rel === 'HEAD' || rel === 'config' || rel === 'packed-refs';
 }
 
 function relativeInside(root: string, child: string): string | null {

@@ -33,7 +33,7 @@
  */
 
 import type { TranscriptSnapshot } from '@emdash/core/runtimes/acp/api/client';
-import { createEffect, createMemo, createRoot, createSignal } from 'solid-js';
+import { createEffect, createMemo, createRoot, createSignal, type Signal } from 'solid-js';
 import type { ChatContext } from '../chat-context';
 import { createParseCaches } from '../core/caches';
 import type { ParseCaches } from '../core/caches';
@@ -277,16 +277,30 @@ function createSessionState(): ChatSessionState {
   const [permissions, setPermissions] = createSignal<readonly AcpPermissionRequest[]>([]);
   const [plan, setPlan] = createSignal<PlanState | null>(null);
   const [pendingPrompt, setPendingPrompt] = createSignal<PendingPrompt | null>(null);
-  const [terminalOutputs, setTerminalOutputs] = createSignal<
-    ReadonlyMap<string, TerminalOutputSnapshot>
-  >(new Map());
-  const pendingToolCallIds = createMemo(() => {
-    const ids = new Set<string>();
-    for (const request of permissions()) {
-      ids.add(request.toolCall.toolCallId);
+  // One signal per terminal: a single Map signal made every committed execute row (and the
+  // committed transcript build) re-run on any terminal's flush.
+  const terminalOutputs = new Map<string, Signal<TerminalOutputSnapshot | null>>();
+  const terminalSignal = (terminalId: string) => {
+    let signal = terminalOutputs.get(terminalId);
+    if (!signal) {
+      signal = createSignal<TerminalOutputSnapshot | null>(null, { equals: false });
+      terminalOutputs.set(terminalId, signal);
     }
-    return ids;
-  });
+    return signal;
+  };
+  // Every session update brings a fresh permissions array; keeping the Set when its ids are
+  // unchanged stops the committed transcript from rebuilding on each streamed chunk.
+  const pendingToolCallIds = createMemo(
+    () => {
+      const ids = new Set<string>();
+      for (const request of permissions()) {
+        ids.add(request.toolCall.toolCallId);
+      }
+      return ids;
+    },
+    undefined,
+    { equals: (a, b) => a.size === b.size && [...a].every((id) => b.has(id)) }
+  );
 
   const state: ChatSessionSnapshot = {
     get permissions() {
@@ -302,7 +316,7 @@ function createSessionState(): ChatSessionState {
       return pendingPrompt();
     },
     terminalOutput(terminalId) {
-      return terminalOutputs().get(terminalId) ?? null;
+      return terminalSignal(terminalId)[0]();
     },
   };
 
@@ -312,15 +326,7 @@ function createSessionState(): ChatSessionState {
     setPlan,
     setPendingPrompt,
     setTerminalOutput(terminalId, snapshot) {
-      setTerminalOutputs((previous) => {
-        const next = new Map(previous);
-        if (snapshot === null) {
-          next.delete(terminalId);
-        } else {
-          next.set(terminalId, snapshot);
-        }
-        return next;
-      });
+      terminalSignal(terminalId)[1](() => snapshot);
     },
   };
 }
