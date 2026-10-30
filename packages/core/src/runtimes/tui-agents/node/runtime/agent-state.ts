@@ -176,13 +176,15 @@ export class TuiAgentStates {
     return peek(this.agentStates.states.list)[conversationId];
   }
 
-  restore(state: TuiAgentState): void {
+  /** `processAlive` is false when the CLI must respawn (no live tmux session): a fresh process
+   * is never mid-turn, and the stop hook for the old one was lost while the app was down. */
+  restore(state: TuiAgentState, processAlive = true): void {
     // Input-inferred "working" is ephemeral: providers without a start hook
     // mark working on Enter and only clear on process exit, so long-lived TUI
     // sessions permanently restore the sidebar spinner. Drop that durable lie;
     // a live hook (or a fresh Enter on a hookless provider) re-asserts working.
     const restored =
-      state.status === 'working' && state.source === 'input'
+      state.status === 'working' && (state.source === 'input' || !processAlive)
         ? { ...state, status: 'idle' as const }
         : state;
     produceCell(this.agentStates.states.list, (draft) => {
