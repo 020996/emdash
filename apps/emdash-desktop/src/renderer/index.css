@@ -1741,7 +1741,8 @@
   backdrop-filter: blur(12px);
 }
 
-.em-modal {
+.em-modal,
+[data-slot='sheet-content'] {
   --border: color-mix(in oklab, var(--em-foreground) 13%, transparent);
   /* Same color as the canvas so the modal does not float as a lighter slab. */
   background-color: var(--em-background);
@@ -1749,7 +1750,7 @@
 
 /* See-through window: the modal keeps a near-solid panel and blurs what is behind it, so the
    page under it never bleeds through the text. */
-.em-transparent .em-modal {
+.em-transparent :is(.em-modal, [data-slot='sheet-content']) {
   background-color: color-mix(in oklab, var(--glass-src-background) 88%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
 }
