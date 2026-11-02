@@ -122,6 +122,16 @@ export function createSourceControlWireController(
         withCheckoutRuntime(options, input, (git, mapped) =>
           git.checkout.blame(mapped, callOptions(meta))
         ),
+      generateCommitMessage: ({ workspaceId, providerId }, meta) =>
+        withIdentityRuntime(
+          options.runtimes,
+          options.workspaceIdentity.resolve(workspaceId),
+          (client, identity) =>
+            client.agentConfig.generateCommitMessage(
+              { providerId, cwd: hostPathFromNative(identity.path) },
+              callOptions(meta)
+            )
+        ),
       push: job<typeof sourceControlContract.checkout.push>((input, context) =>
         runCheckoutJob(
           options,

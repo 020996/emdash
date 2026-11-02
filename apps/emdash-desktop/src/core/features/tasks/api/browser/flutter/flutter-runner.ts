@@ -1,5 +1,5 @@
 import { ReplicaLog } from '@emdash/wire/live';
-import { action, computed, makeObservable, observable, runInAction } from 'mobx';
+import { action, computed, makeObservable, observable, runInAction, when } from 'mobx';
 import { getSearchClient } from '@core/features/search/api/client';
 import type { PreviewServerStore } from '@core/features/tasks/api/browser/stores/preview-server-store';
 import type { TerminalRuntimeKey } from '@core/features/terminals/api';
@@ -9,6 +9,7 @@ import { log } from '@core/primitives/logging/browser/logger';
 import {
   markerCommand,
   markerText,
+  openRunToken,
   parseFlutterDevices,
   parseFlutterEmulators,
   sliceBetweenMarkers,
@@ -104,10 +105,12 @@ export class FlutterRunner {
 
   /** The file index may still be building when the task opens, so a miss is retried. */
   detectFlutter(): Promise<void> {
-    this.detecting ??= this.detect().catch((error: unknown) => {
-      this.detecting = null;
-      throw error;
-    });
+    this.detecting ??= this.detect()
+      .then(() => (this.isFlutter ? this.adopt() : undefined))
+      .catch((error: unknown) => {
+        this.detecting = null;
+        throw error;
+      });
     return this.detecting;
   }
 
@@ -128,6 +131,16 @@ export class FlutterRunner {
     runInAction(() => {
       this.isFlutter = false;
     });
+  }
+
+  /** A renderer reload drops this runner, but the "Flutter" terminal and its `flutter run` live on
+   * in the main process: reattach so the run state is read back from its log. */
+  private async adopt(): Promise<void> {
+    await when(() => this.terminals.isLoaded);
+    const existing = [...this.terminals.terminals.values()].find((t) => t.data.name === 'Flutter');
+    if (this.terminalId || !existing) return;
+    await this.terminals.hydrateTerminal(existing.data.id);
+    if (!this.terminalId) await this.attach(existing.data.id);
   }
 
   setMode(mode: FlutterRunMode): void {
@@ -242,6 +255,10 @@ export class FlutterRunner {
       taskId: this.taskId,
       name: 'Flutter',
     });
+    await this.attach(id);
+  }
+
+  private async attach(id: string): Promise<void> {
     const key = this.terminals.runtimeKeys.get(id);
     if (!key) throw new Error('Flutter terminal did not start');
     void this.log?.dispose();
@@ -261,6 +278,10 @@ export class FlutterRunner {
     const text = stripAnsi(chunk);
     this.output = ((reset ? '' : this.output) + text).slice(-OUTPUT_LIMIT);
     for (const listener of [...this.listeners]) listener();
+    if (reset && !this.runToken) {
+      this.runToken = openRunToken(this.output);
+      if (this.runToken) this.phase = 'starting';
+    }
     if (!this.runToken) return;
     const recent = reset ? this.output : this.output.slice(-(text.length + MARKER_OVERLAP));
     if (recent.includes(markerText('X', this.runToken))) {

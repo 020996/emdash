@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   markerCommand,
   markerText,
+  openRunToken,
   parseFlutterDevices,
   parseFlutterEmulators,
   sliceBetweenMarkers,
@@ -35,5 +36,13 @@ describe('flutter output parsing', () => {
       ].join('\n')
     );
     expect(emulators.map((e) => e.id)).toEqual(['apple_ios_simulator', 'Pixel_6_Pro']);
+  });
+
+  it('finds the run still in progress in a replayed log', () => {
+    const start = (t: string) => `\n${markerText('S', t)}\nLaunching...`;
+    expect(openRunToken(`${start('a')}\n${markerText('X', 'a')}`)).toBeNull();
+    expect(openRunToken(`${start('a')}\n^C\n% `)).toBeNull();
+    expect(openRunToken(`${start('a')}\n${markerText('X', 'a')}${start('b')}`)).toBe('b');
+    expect(openRunToken('% ')).toBeNull();
   });
 });

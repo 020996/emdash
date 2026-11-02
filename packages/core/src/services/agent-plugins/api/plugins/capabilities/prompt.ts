@@ -25,6 +25,9 @@ export type AgentCommand = {
 
 type Prompt = {
   buildCommand(ctx: CommandContext): AgentCommand;
+  /** Args for a non-interactive run that reads its prompt from stdin, prints the answer to
+   * stdout and exits (e.g. `claude -p`). Absent when the CLI has no such mode. */
+  oneShotArgs?(): string[];
 };
 
 /**

@@ -1,5 +1,6 @@
 import { ok, type Result } from '@emdash/shared';
 import type { McpServer } from '#primitives/mcp/api';
+import { formatAbsolute, type HostAbsolutePath } from '#primitives/path/api';
 import type { CatalogSkill } from '#primitives/skills/api';
 import type {
   AgentConfigAuthError,
@@ -53,6 +54,12 @@ export function createAgentConfigProcedures(runtime: AgentConfigRuntime) {
       providerId: string;
     }): Promise<Result<AgentAuthStatus, AgentConfigAuthError>> {
       return runtime.refreshAuthStatus(input.providerId);
+    },
+    generateCommitMessage(input: {
+      providerId: string;
+      cwd: HostAbsolutePath;
+    }): Promise<Result<{ message: string }, AgentConfigAuthError>> {
+      return runtime.generateCommitMessage(input.providerId, formatAbsolute(input.cwd));
     },
     saveMcpServer(input: { server: McpServer }): Promise<Result<void, AgentConfigMcpError>> {
       return runtime.saveMcpServer(input.server);
