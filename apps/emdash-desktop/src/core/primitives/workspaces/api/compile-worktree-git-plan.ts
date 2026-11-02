@@ -14,7 +14,7 @@ export type WorktreeGitPlan = {
   baseRef?: string;
   /** Explicit background publication target; absent when publication is disabled. */
   publish?: { remote: string };
-  /** Present only for PR-sourced configs; absent plans need no host-side git setup. */
+  /** PR-sourced configs, or a remote branch checked out under its own name (upstream only). */
   gitSetup?: {
     fetchBranch?: { remote: string; sourceRef: string };
     upstream?: { remote: string; mergeRef: string };
@@ -50,15 +50,22 @@ export function compileWorktreeGitPlan(
   context: WorktreeGitPlanContext
 ): WorktreeGitPlan {
   switch (git.kind) {
-    case 'create-branch':
+    case 'create-branch': {
+      const from = git.fromBranch;
+      // Checking out `<remote>/<X>` as X tracks it, like `git checkout X`; otherwise the
+      // branch looks unpublished and push-ahead counts never show.
+      const tracksSource = from.type === 'remote' && from.branch === git.branchName;
       return {
         branch: git.branchName,
-        baseRef:
-          git.fromBranch.type === 'remote'
-            ? `${git.fromBranch.remote.name}/${git.fromBranch.branch}`
-            : git.fromBranch.branch,
+        baseRef: from.type === 'remote' ? `${from.remote.name}/${from.branch}` : from.branch,
         ...compilePublishTarget(git.pushBranch, context.pushRemote),
+        ...(tracksSource && {
+          gitSetup: {
+            upstream: { remote: from.remote.name, mergeRef: branchHeadRef(from.branch) },
+          },
+        }),
       };
+    }
     case 'use-branch':
       return { branch: git.branchName, baseRef: git.branchName };
     case 'pr-branch':

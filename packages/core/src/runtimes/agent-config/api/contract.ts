@@ -7,6 +7,7 @@ import {
   procedure,
 } from '@emdash/wire/rpc';
 import { z } from 'zod';
+import { hostAbsolutePathSchema } from '#primitives/path/api';
 import { agentAuthStatusSchema } from '#services/agent-plugins/api/plugins/capabilities/auth';
 import {
   agentConfigAuthErrorSchema,
@@ -66,6 +67,12 @@ export const agentConfigContract = defineContract({
   refreshAuthStatus: fallible({
     input: providerCommandSchema,
     data: agentAuthStatusSchema,
+    error: agentConfigAuthErrorSchema,
+  }),
+  /** One-shot run of the provider CLI in `cwd` that writes a commit message for its changes. */
+  generateCommitMessage: fallible({
+    input: providerCommandSchema.extend({ cwd: hostAbsolutePathSchema }),
+    data: z.object({ message: z.string() }),
     error: agentConfigAuthErrorSchema,
   }),
   loginOutput: liveLog({ key: providerCommandSchema }),

@@ -1,3 +1,4 @@
+import { agentConfigContract } from '@emdash/core/runtimes/agent-config/api';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import type { Result } from '@emdash/shared';
 import {
@@ -142,6 +143,11 @@ const sourceControlCheckoutContract = defineContract({
   blame: runtimeFallibleProcedure(
     checkout.blame.input.omit({ checkout: true }).extend(workspaceKeySchema.shape),
     checkout.blame.output
+  ),
+  /** Runs the task's agent CLI one-shot over the workspace's changes. */
+  generateCommitMessage: runtimeFallibleProcedure(
+    workspaceKeySchema.extend({ providerId: z.string() }),
+    agentConfigContract.generateCommitMessage.output
   ),
   push: liveJob({
     input: checkout.push.input.omit({ checkout: true }).extend(workspaceKeySchema.shape),

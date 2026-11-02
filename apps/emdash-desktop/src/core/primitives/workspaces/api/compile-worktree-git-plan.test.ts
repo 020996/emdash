@@ -46,6 +46,22 @@ describe('compileWorktreeGitPlan — non-PR git configs', () => {
     expect(plan).toEqual({ branch: 'feature/x', baseRef: 'upstream/develop' });
   });
 
+  it('tracks the remote branch when checking it out under its own name', () => {
+    const plan = compileWorktreeGitPlan(
+      {
+        kind: 'create-branch',
+        branchName: 'develop',
+        fromBranch: { type: 'remote', branch: 'develop', remote: { name: 'origin', url: 'u' } },
+      },
+      context
+    );
+    expect(plan).toEqual({
+      branch: 'develop',
+      baseRef: 'origin/develop',
+      gitSetup: { upstream: { remote: 'origin', mergeRef: 'refs/heads/develop' } },
+    });
+  });
+
   it('compiles use-branch with the branch as its own base and no push', () => {
     const plan = compileWorktreeGitPlan({ kind: 'use-branch', branchName: 'main' }, context);
     expect(plan).toEqual({ branch: 'main', baseRef: 'main' });

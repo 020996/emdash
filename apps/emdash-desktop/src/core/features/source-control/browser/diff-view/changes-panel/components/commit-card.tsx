@@ -1,7 +1,12 @@
 import { Button, Input, SplitButton, toast } from '@emdash/ui/react/primitives';
-import { ArrowUp, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowUp, CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useRef, useState } from 'react';
+import { getConversationsForTask } from '@core/features/conversations/api/browser/conversation-selectors';
+import {
+  checkoutSelector,
+  getSourceControlClient,
+} from '@core/features/source-control/api/browser/client';
 import { getGitRepositoryStore } from '@core/features/source-control/api/browser/stores/source-control-selectors';
 import { getTaskGitCheckoutStore } from '@core/features/source-control/api/browser/stores/task-source-control-selectors';
 import { formatPushErrorDetail } from '@core/features/source-control/api/git-error-messages';
@@ -36,6 +41,7 @@ export const CommitCard = observer(function CommitCard() {
   const hasPRs = changesView?.expandedSections.pullRequests ?? false;
   const [commitMessage, setCommitMessage] = useState('');
   const [phase, setPhase] = useState<CommitPhase>('idle');
+  const [generating, setGenerating] = useState(false);
   // A pending "back to idle" from the last action must not reset a newer one mid-flight.
   const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const begin = (next: CommitPhase) => {
@@ -91,6 +97,39 @@ export const CommitCard = observer(function CommitCard() {
     }
     setPhase('commit-only-done');
     idleTimer.current = setTimeout(() => setPhase('idle'), 3000);
+  };
+
+  /** The task's agent writes the message: its first conversation's provider, run one-shot. */
+  const generateMessage = async () => {
+    const conversations = [...(getConversationsForTask(taskId)?.conversations.values() ?? [])];
+    const providerId = (conversations.find((c) => c.isInitialConversation) ?? conversations[0])
+      ?.data.providerId;
+    if (!providerId) {
+      toast.error('Start an agent in this task to generate a commit message');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const client = await getSourceControlClient();
+      const result = await client.checkout.generateCommitMessage({
+        ...checkoutSelector(workspaceId),
+        providerId,
+      });
+      if (!result.success) {
+        const { error } = result;
+        toast.error(
+          `Failed to generate commit message: ${'message' in error ? error.message : error.type}`
+        );
+        return;
+      }
+      setCommitMessage(result.data.message);
+    } catch (error) {
+      toast.error(
+        `Failed to generate commit message: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const doPush = async () => {
@@ -194,18 +233,34 @@ export const CommitCard = observer(function CommitCard() {
 
   return (
     <div className="flex shrink-0 flex-col gap-1.5 border-b border-border px-3 pt-2 pb-3">
-      <Input
-        placeholder="Message (⌘Enter to commit)"
-        className="w-full"
-        value={commitMessage}
-        onChange={(e) => setCommitMessage(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey) || !commitMessage.trim()) return;
-          e.preventDefault();
-          actions.find((a) => a.id === effectiveAction)?.action();
-        }}
-        disabled={isInFlight}
-      />
+      <div className="flex items-center gap-1">
+        <Input
+          placeholder="Message (⌘Enter to commit)"
+          className="w-full"
+          value={commitMessage}
+          onChange={(e) => setCommitMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey) || !commitMessage.trim()) return;
+            e.preventDefault();
+            actions.find((a) => a.id === effectiveAction)?.action();
+          }}
+          disabled={isInFlight || generating}
+        />
+        <Button
+          variant="ghost"
+          size="xs"
+          aria-label="Generate commit message"
+          title="Generate commit message"
+          disabled={isInFlight || generating}
+          onClick={() => void generateMessage()}
+        >
+          {generating ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Sparkles className="size-3.5" />
+          )}
+        </Button>
+      </div>
       {phase === 'idle' && (
         <SplitButton
           options={actions.map(({ id, label }) => ({ id, label }))}

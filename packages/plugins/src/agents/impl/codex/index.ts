@@ -185,6 +185,7 @@ export const provider = registerPluginBehavior(plugin, {
         deduplicateFlags: ['--dangerously-bypass-approvals-and-sandbox'],
         modelFlag: '-m',
       }),
+    oneShotArgs: () => ['exec', '--skip-git-repo-check', '-'],
   },
   hooks: buildCodexHookConfig(),
   mcp: codexMcpAdapter(),

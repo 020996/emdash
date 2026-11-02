@@ -172,6 +172,18 @@ export const provider = registerPluginBehavior(plugin, {
         sessionIdFlag: '--session-id',
         modelFlag: '--model',
       }),
+    // Skips MCP servers, user/project settings (hooks, plugins) and tools: ~2x faster startup.
+    oneShotArgs: () => [
+      '-p',
+      '--model',
+      'haiku',
+      '--strict-mcp-config',
+      '--setting-sources',
+      '',
+      '--tools',
+      '',
+      '--no-session-persistence',
+    ],
   },
   hooks: buildClaudeHookConfig(),
   mcp: passthroughMcpAdapter('.claude.json'),

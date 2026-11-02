@@ -275,10 +275,14 @@ export class TuiAgentsRuntime {
           parse: (intent) => {
             const parsed = persistedTuiAgentStartInputSchema.safeParse(intent.payload);
             if (!parsed.success) return { suspend: 'reconcile-failed' };
+            const input = this.normalizePersistedInput(parsed.data);
             if (parsed.data.lastAgentState) {
-              this.agentStates.restore(parsed.data.lastAgentState);
+              this.agentStates.restore(
+                parsed.data.lastAgentState,
+                tmuxActivityForInput(this.tmuxActivity, input) !== undefined
+              );
             }
-            return { input: this.normalizePersistedInput(parsed.data) };
+            return { input };
           },
           gate: (input) => {
             if (tmuxActivityForInput(this.tmuxActivity, input) === undefined) {

@@ -22,6 +22,7 @@ import {
 import type { AgentAuthStatus } from '#services/agent-plugins/api/plugins';
 import { AgentHookInstaller } from '#services/agent-plugins/node';
 import { AgentAuthManager, type LoginDimensions } from './auth';
+import { generateCommitMessage } from './commit-message';
 import { AgentInstallManager } from './install';
 import { AgentMcpConfigManager } from './mcp';
 import { AgentSkillsManager } from './skills';
@@ -79,6 +80,13 @@ export class AgentConfigRuntime {
 
   refreshAuthStatus(providerId: string): Promise<Result<AgentAuthStatus, AgentConfigAuthError>> {
     return this.auth.refreshAuthStatus(providerId);
+  }
+
+  generateCommitMessage(
+    providerId: string,
+    cwd: string
+  ): Promise<Result<{ message: string }, AgentConfigAuthError>> {
+    return generateCommitMessage(this.deps.agentHost, providerId, cwd);
   }
 
   startLogin(

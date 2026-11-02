@@ -201,4 +201,20 @@ describe('TuiAgentStates', () => {
     });
     expect(peek(agentStates.states.list)['conv-2']?.status).toBe('working');
   });
+
+  it('does not restore hook working status when the process has to respawn', () => {
+    const { tracker, agentStates } = createTracker();
+
+    tracker.restore(
+      {
+        conversationId: 'conv-1',
+        providerId: 'claude',
+        status: 'working',
+        source: 'hook',
+        updatedAt: 1,
+      },
+      false
+    );
+    expect(peek(agentStates.states.list)['conv-1']?.status).toBe('idle');
+  });
 });
