@@ -162,6 +162,17 @@ export class GitCheckout {
     }
   }
 
+  /** `git reset --soft HEAD~1`: changes stay staged; returns the undone message for re-editing. */
+  async undoLastCommit(): Promise<Result<{ message: string }, GitCommandError>> {
+    try {
+      const { stdout } = await this.exec.exec(['log', '-1', '--format=%B', 'HEAD']);
+      await this.exec.exec(['reset', '--soft', 'HEAD~1']);
+      return ok({ message: stdout.trim() });
+    } catch (error) {
+      return checkoutFailures.command(error);
+    }
+  }
+
   async continueOperation(operation: string): Promise<Result<void, GitCommandError>> {
     // core.editor=true: accept the prepared message instead of opening an editor.
     return this.commandMutation(() =>

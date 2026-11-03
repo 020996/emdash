@@ -49,7 +49,11 @@ export function PinnedUserMessage(props: {
 
   return (
     <>
-      <div class={pinnedBackdrop} style={{ 'padding-top': `${messageUnitDef.margin?.top ?? 8}px` }}>
+      {/* em-sticky-cover: the host keeps it near-opaque over scrolling rows on a see-through window. */}
+      <div
+        class={`${pinnedBackdrop} em-sticky-cover`}
+        style={{ 'padding-top': `${messageUnitDef.margin?.top ?? 8}px` }}
+      >
         <UserMessageCard data={props.item} ctx={renderCtx} vars={messageUnitDef.vars!} />
       </div>
       {/* 16px scroll fade: signals that rows scroll beneath the pinned message. */}

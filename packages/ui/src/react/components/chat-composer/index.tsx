@@ -921,7 +921,8 @@ export function ChatComposer({
       )}
 
       <div
-        className={styles.composerShell({ hasBand: !!hasBand, dragActive })}
+        // em-sticky-cover: the host keeps it near-opaque over scrolling text on a see-through window.
+        className={cx(styles.composerShell({ hasBand: !!hasBand, dragActive }), 'em-sticky-cover')}
         onPaste={handlePaste}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

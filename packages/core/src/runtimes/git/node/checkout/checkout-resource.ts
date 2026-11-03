@@ -191,6 +191,12 @@ export class CheckoutResource {
     return result;
   }
 
+  async undoLastCommit(_context: CheckoutMutationContext<'undoLastCommit'>) {
+    const result = await this.execute(() => this.commands.undoLastCommit());
+    this.historyChanged(result.success);
+    return result;
+  }
+
   async continueOperation(context: CheckoutMutationContext<'continueOperation'>) {
     const result = await this.execute(() =>
       this.commands.continueOperation(context.input.operation)
