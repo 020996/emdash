@@ -1,7 +1,7 @@
 import { Button, Input, SplitButton, toast } from '@emdash/ui/react/primitives';
-import { ArrowUp, CheckCircle, Loader2, Sparkles } from 'lucide-react';
+import { ArrowUp, Loader2, Sparkles, Undo2 } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { getConversationsForTask } from '@core/features/conversations/api/browser/conversation-selectors';
 import {
   checkoutSelector,
@@ -20,14 +20,7 @@ import {
 } from '@core/features/workbench/api/browser/task-composition-context';
 import { useOpenModal } from '@core/manifests/browser/modal-api';
 
-type CommitPhase =
-  | 'idle'
-  | 'committing'
-  | 'commit-only-done'
-  | 'committed'
-  | 'pushing'
-  | 'pushed'
-  | 'opening-pr';
+type CommitPhase = 'idle' | 'committing' | 'pushing' | 'opening-pr';
 
 /** Pinned above the change sections; with nothing staged, committing stages everything. */
 export const CommitCard = observer(function CommitCard() {
@@ -42,12 +35,6 @@ export const CommitCard = observer(function CommitCard() {
   const [commitMessage, setCommitMessage] = useState('');
   const [phase, setPhase] = useState<CommitPhase>('idle');
   const [generating, setGenerating] = useState(false);
-  // A pending "back to idle" from the last action must not reset a newer one mid-flight.
-  const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const begin = (next: CommitPhase) => {
-    clearTimeout(idleTimer.current);
-    setPhase(next);
-  };
   /** Thrown errors (model not ready, job failure) would otherwise leave the card stuck in flight. */
   const guarded = (work: () => Promise<void>) => () =>
     void work().catch((error: unknown) => {
@@ -83,7 +70,7 @@ export const CommitCard = observer(function CommitCard() {
   };
 
   const doCommit = async () => {
-    begin('committing');
+    setPhase('committing');
     if (!(await stageAllIfNeeded())) return;
     const result = await git.commit(commitMessage);
     if (!result.success) {
@@ -95,9 +82,32 @@ export const CommitCard = observer(function CommitCard() {
     if (!autoStage) {
       changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
     }
-    setPhase('commit-only-done');
-    idleTimer.current = setTimeout(() => setPhase('idle'), 3000);
+    // No "Committed" flash: the card swaps straight to the Push button.
+    setPhase('idle');
   };
+
+  /** Soft reset: the commit's changes return staged and its message refills the input. */
+  const doUndo = async () => {
+    const result = await git.undoLastCommit();
+    if (!result.success) {
+      toast.error(`Failed to undo commit: ${formatErrorType(result.error)}`);
+      return;
+    }
+    setCommitMessage(result.data.message);
+  };
+  // ponytail: only unpushed commits, so undo never rewrites what the remote already has.
+  const undoButton = git.aheadCount > 0 && (
+    <Button
+      variant="ghost"
+      size="xs"
+      aria-label="Undo last commit"
+      title="Undo last commit"
+      disabled={isInFlight || generating}
+      onClick={guarded(doUndo)}
+    >
+      <Undo2 className="size-3.5" />
+    </Button>
+  );
 
   /** The task's agent writes the message: its first conversation's provider, run one-shot. */
   const generateMessage = async () => {
@@ -133,37 +143,19 @@ export const CommitCard = observer(function CommitCard() {
   };
 
   const doPush = async () => {
-    begin('pushing');
+    setPhase('pushing');
     const pushResult = await git.push();
     if (!pushResult.success) {
       toast.error(`Failed to push: ${formatPushErrorDetail(pushResult.error)}`);
       setPhase('idle');
       return;
     }
-    setPhase('pushed');
-    idleTimer.current = setTimeout(() => setPhase('idle'), 3000);
-  };
-
-  const doCommitAndPush = async () => {
-    begin('committing');
-    if (!(await stageAllIfNeeded())) return;
-    const commitResult = await git.commit(commitMessage);
-    if (!commitResult.success) {
-      toast.error(`Failed to commit changes: ${formatErrorType(commitResult.error)} `);
-      setPhase('idle');
-      return;
-    }
-    setCommitMessage('');
-    if (!autoStage) {
-      changesView.setExpanded({ unstaged: true, staged: false, pullRequests: hasPRs });
-    }
-    setPhase('committed');
-    await new Promise((r) => setTimeout(r, 1000));
-    await doPush();
+    // No "Pushed" flash: nothing left ahead hides the card.
+    setPhase('idle');
   };
 
   const doCommitAndCreatePr = async () => {
-    begin('committing');
+    setPhase('committing');
     if (!(await stageAllIfNeeded())) return;
     const commitResult = await git.commit(commitMessage);
     if (!commitResult.success) {
@@ -192,26 +184,29 @@ export const CommitCard = observer(function CommitCard() {
     if (git.aheadCount === 0 && phase === 'idle') return null;
     return (
       <div className="flex shrink-0 flex-col gap-1.5 border-b border-border px-3 pt-2 pb-3">
-        {phase === 'pushing' ? (
-          <StatusRow icon={<Loader2 className="size-4 animate-spin" />} label="Pushing…" />
-        ) : phase === 'pushed' ? (
-          <StatusRow
-            icon={<CheckCircle className="size-4 text-foreground-success" />}
-            label="Pushed"
-          />
-        ) : (
-          <Button size="sm" className="w-full" onClick={guarded(doPush)}>
-            <ArrowUp className="size-3.5" />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="primary"
+            size="sm"
+            className="flex-1"
+            disabled={isInFlight}
+            onClick={guarded(doPush)}
+          >
+            {phase === 'pushing' ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <ArrowUp className="size-3.5" />
+            )}
             Push {git.aheadCount} {git.aheadCount === 1 ? 'commit' : 'commits'}
           </Button>
-        )}
+          {undoButton}
+        </div>
       </div>
     );
   }
 
   const actions = [
     { id: 'commit', label: 'Commit', action: guarded(doCommit) },
-    { id: 'commit-push', label: 'Commit & Push', action: guarded(doCommitAndPush) },
     ...(canCreatePr
       ? [
           {
@@ -226,10 +221,10 @@ export const CommitCard = observer(function CommitCard() {
       : []),
   ];
 
-  const effectiveAction =
-    diffView.effectiveCommitAction === 'commit-pr' && !canCreatePr
-      ? 'commit-push'
-      : diffView.effectiveCommitAction;
+  // A saved 'commit-push' preference (option removed) or unavailable PR falls back to Commit.
+  const effectiveAction = actions.some((a) => a.id === diffView.effectiveCommitAction)
+    ? diffView.effectiveCommitAction
+    : 'commit';
 
   return (
     <div className="flex shrink-0 flex-col gap-1.5 border-b border-border px-3 pt-2 pb-3">
@@ -260,8 +255,21 @@ export const CommitCard = observer(function CommitCard() {
             <Sparkles className="size-3.5" />
           )}
         </Button>
+        {undoButton}
       </div>
-      {phase === 'idle' && (
+      {actions.length === 1 && (
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full"
+          disabled={!commitMessage.trim() || isInFlight}
+          onClick={actions[0].action}
+        >
+          {phase === 'committing' && <Loader2 className="size-3.5 animate-spin" />}
+          Commit
+        </Button>
+      )}
+      {phase === 'idle' && actions.length > 1 && (
         <SplitButton
           options={actions.map(({ id, label }) => ({ id, label }))}
           size="sm"
@@ -275,7 +283,7 @@ export const CommitCard = observer(function CommitCard() {
           onAction={(id) => actions.find((a) => a.id === id)?.action()}
         />
       )}
-      {phase === 'committing' && (
+      {phase === 'committing' && actions.length > 1 && (
         <StatusRow icon={<Loader2 className="size-4 animate-spin" />} label="Committing…" />
       )}
       {phase === 'opening-pr' && (
@@ -284,21 +292,6 @@ export const CommitCard = observer(function CommitCard() {
           label={
             repository?.providerRepository?.provider === 'gitlab' ? 'Opening MR…' : 'Opening PR…'
           }
-        />
-      )}
-      {(phase === 'commit-only-done' || phase === 'committed') && (
-        <StatusRow
-          icon={<CheckCircle className="size-4 text-foreground-success" />}
-          label="Committed"
-        />
-      )}
-      {phase === 'pushing' && (
-        <StatusRow icon={<Loader2 className="size-4 animate-spin" />} label="Pushing…" />
-      )}
-      {phase === 'pushed' && (
-        <StatusRow
-          icon={<CheckCircle className="size-4 text-foreground-success" />}
-          label="Pushed"
         />
       )}
     </div>

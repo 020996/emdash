@@ -353,6 +353,12 @@ export class GitCheckoutStore {
     return result.success ? ok() : err(result.error);
   }
 
+  async undoLastCommit() {
+    const model = await this.requireModel();
+    const result = await settleMutation(model.mutations.undoLastCommit({}));
+    return result.success ? ok(result.data.data) : err(result.error);
+  }
+
   async continueOperation() {
     const operation = this.resolvableOperation;
     if (!operation) return ok();

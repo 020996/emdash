@@ -71,6 +71,11 @@ export const gitCheckoutContract = defineContract({
         data: z.object({ hash: z.string() }),
         error: commitErrorSchema,
       }),
+      undoLastCommit: mutation({
+        input: z.object({}),
+        data: z.object({ message: z.string() }),
+        error: gitCommandErrorSchema,
+      }),
       continueOperation: mutation({
         input: z.object({ operation: resolvableOperationSchema }),
         data: z.void(),
