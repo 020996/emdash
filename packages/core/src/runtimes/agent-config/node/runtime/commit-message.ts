@@ -18,7 +18,8 @@ export function buildCommitMessagePrompt(input: {
       : input.diff;
   return [
     'Write a git commit message for the changes below.',
-    'Match the style (prefix, casing, language) of the recent commit subjects.',
+    'Always write it in English, even if the recent commit subjects use another language.',
+    'Match the style (prefix, casing) of the recent commit subjects.',
     'Reply with the commit message only: no quotes, no code fences, no explanation,',
     'no trailers such as Co-Authored-By.',
     'Use a single subject line unless the change clearly needs a short body.',
