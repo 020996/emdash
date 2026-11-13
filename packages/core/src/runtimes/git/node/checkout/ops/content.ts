@@ -13,12 +13,12 @@ export async function readGitFileContent(
 ): Promise<GitFileContentState> {
   const spec = sourceSpec(source, path);
   try {
-    const { stdout: oidOutput } = await exec.exec([
-      'rev-parse',
-      '--verify',
-      '--end-of-options',
-      spec,
-    ]);
+    const revParse = (s: string) => exec.exec(['rev-parse', '--verify', '--end-of-options', s]);
+    // An unmerged path has no stage-0 entry; fall back to stage 2 (ours, i.e. HEAD) so a
+    // conflicted file diffs against its HEAD version instead of reading as a new file.
+    const { stdout: oidOutput } = await revParse(spec).catch((error: unknown) =>
+      source.kind === 'index' ? revParse(`:2:${path}`).catch(() => Promise.reject(error)) : Promise.reject(error)
+    );
     const oid = oidOutput.trim();
     const { stdout } = await exec.execBuffer(['cat-file', 'blob', oid], {
       maxBuffer: MAX_CONTENT_BYTES,

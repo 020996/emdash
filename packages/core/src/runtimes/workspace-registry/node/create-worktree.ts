@@ -51,6 +51,7 @@ export async function executeCreateWorktree(
   let existing = false;
   let createdWorktree = false;
   let createdBranch = false;
+  let dwimUpstream: { remote: string; mergeRef: string } | undefined;
 
   const fail = async (stage: string, error: unknown): Promise<CreateWorktreeExecutionResult> => {
     await rollback(exec, execution, { createdWorktree, createdBranch });
@@ -159,6 +160,11 @@ export async function executeCreateWorktree(
         );
       } else if (execution.baseRef !== null) {
         const baseRef = execution.baseRef;
+        // A remote-only branch used by its own name: git's add DWIMs it from <remote>/<name>,
+        // but --no-track leaves it without upstream, so it would look unpublished.
+        if (baseRef === execution.branch && !(await refResolves(exec, baseRef))) {
+          dwimUpstream = await uniqueRemoteTracking(exec, baseRef);
+        }
         await retryTransientLock(() =>
           exec.exec([
             'worktree',
@@ -185,7 +191,8 @@ export async function executeCreateWorktree(
   // Unconditionally idempotent plain config sets, running on the fresh and the
   // reused-branch/replay path alike. Branch-scoped keys land in the repository's
   // common config — the same place branch.<name>.remote/.merge always live.
-  const { upstream, breadcrumb } = execution.gitSetup ?? {};
+  const { breadcrumb } = execution.gitSetup ?? {};
+  const upstream = execution.gitSetup?.upstream ?? dwimUpstream;
   if (upstream || breadcrumb) {
     execution.onStage('configure-branch');
     try {
@@ -273,6 +280,21 @@ async function branchExists(exec: BoundExec, branch: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** The one `refs/remotes/<remote>/<branch>` git's DWIM would pick; none if absent or ambiguous. */
+async function uniqueRemoteTracking(
+  exec: BoundExec,
+  branch: string
+): Promise<{ remote: string; mergeRef: string } | undefined> {
+  const remotes = (await exec.exec(['remote'])).stdout.trim().split('\n').filter(Boolean);
+  const matches: string[] = [];
+  for (const remote of remotes) {
+    if (await refResolves(exec, `refs/remotes/${remote}/${branch}`)) matches.push(remote);
+  }
+  return matches.length === 1
+    ? { remote: matches[0], mergeRef: `refs/heads/${branch}` }
+    : undefined;
 }
 
 async function refResolves(exec: BoundExec, ref: string): Promise<boolean> {

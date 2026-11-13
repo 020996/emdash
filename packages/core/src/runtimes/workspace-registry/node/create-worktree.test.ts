@@ -122,6 +122,32 @@ describe('executeCreateWorktree resolve-base', () => {
     ).toBe('');
   });
 
+  it('tracks the remote branch when a remote-only branch is used by its own name', async () => {
+    const seed = await makeRepo(root, 'seed');
+    git(seed, 'checkout', '-b', 'feature/base');
+    const originPath = path.join(root, 'origin.git');
+    git(root, 'init', '--bare', originPath);
+    git(seed, 'push', originPath, 'main', 'feature/base');
+
+    const repoPath = await makeRepo(root, 'repo');
+    git(repoPath, 'remote', 'add', 'origin', originPath);
+    git(repoPath, 'fetch', 'origin');
+
+    const result = await executeCreateWorktree({
+      git: gitContext,
+      repositoryPath: repoPath,
+      worktreePath: path.join(root, 'use-branch-wt'),
+      branch: 'feature/base',
+      baseRef: 'feature/base',
+      onStage: () => {},
+    });
+
+    expect(result).toMatchObject({ status: 'succeeded' });
+    expect(
+      git(repoPath, 'for-each-ref', 'refs/heads/feature/base', '--format=%(upstream:short)')
+    ).toBe('origin/feature/base');
+  });
+
   it("fails creation cleanly with git's error when the remote base ref does not exist", async () => {
     const originPath = path.join(root, 'origin.git');
     git(root, 'init', '--bare', originPath);
