@@ -18,12 +18,13 @@ export function buildCommitMessagePrompt(input: {
       : input.diff;
   return [
     'Write a git commit message for the changes below.',
-    'Match the style (prefix, casing, language) of the recent commit subjects.',
+    'Always write it in English, even if the recent commit subjects use another language.',
+    'Copy only the format (prefix, scope, casing) of the recent commit subjects, never their language.',
     'Reply with the commit message only: no quotes, no code fences, no explanation,',
     'no trailers such as Co-Authored-By.',
     'Use a single subject line unless the change clearly needs a short body.',
     '',
-    'Recent commit subjects:',
+    'Recent commit subjects (format reference only; ignore their language, translate to English):',
     input.recentSubjects.trim() || '(none)',
     '',
     'Changed files (git status --short):',
@@ -31,6 +32,9 @@ export function buildCommitMessagePrompt(input: {
     '',
     'Diff:',
     diff,
+    '',
+    // Restated last: small models drift to the language of the recent subjects above.
+    'Reminder: the commit message must be in English.',
   ].join('\n');
 }
 
