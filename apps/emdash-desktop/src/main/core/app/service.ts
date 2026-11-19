@@ -1,7 +1,7 @@
 import { exec } from 'node:child_process';
 import { access, cp, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, extname, join, resolve, sep } from 'node:path';
+import { basename, dirname, extname, join, resolve, sep } from 'node:path';
 import type { HostRef } from '@emdash/core/primitives/host/api';
 import { parsePortableRelativePath, type HostFileRef } from '@emdash/core/primitives/path/api';
 import type { FsError } from '@emdash/core/runtimes/files/api';
@@ -643,8 +643,10 @@ class AppService implements Disposable {
 
     if (!command) throw new Error('Unsupported platform or app');
 
+    // File targets (e.g. a .ipa for Transporter) can't be a cwd: spawn fails with ENOTDIR.
+    const cwd = (await stat(target)).isDirectory() ? target : dirname(target);
     await new Promise<void>((resolve, reject) => {
-      exec(command, { cwd: target, env: buildExternalToolEnv() }, (err) => {
+      exec(command, { cwd, env: buildExternalToolEnv() }, (err) => {
         if (err) return reject(err);
         resolve();
       });

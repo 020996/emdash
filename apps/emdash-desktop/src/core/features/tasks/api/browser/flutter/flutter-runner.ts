@@ -10,8 +10,9 @@ import {
   markerCommand,
   markerText,
   openRunToken,
-  parseFlutterDevices,
-  parseFlutterEmulators,
+  parseDaemonLine,
+  DAEMON_EMULATORS_REQUEST_ID,
+  type DaemonUpdate,
   sliceBetweenMarkers,
   stripAnsi,
   type FlutterDevice,
@@ -30,12 +31,14 @@ type LastDevice = Pick<FlutterDevice, 'id' | 'name'>;
  * Simulators only build debug mode, so this is the lighter option there. */
 export type FlutterRunMode = 'run' | 'debug';
 
-// ponytail: simulators/emulators only; drop these flags if wireless devices are ever needed.
-const DEVICES_COMMAND = 'flutter devices --machine --device-connection attached --device-timeout 1';
+const DAEMON_TERMINAL = 'Flutter Devices';
+const DAEMON_START_REQUESTS =
+  '[{"id":1,"method":"device.enable"}]\r' +
+  `[{"id":${DAEMON_EMULATORS_REQUEST_ID},"method":"emulator.getEmulators"}]\r`;
 const OUTPUT_LIMIT = 64_000;
 const MARKER_OVERLAP = 64;
-const EMULATOR_BOOT_POLLS = 40;
-const EMULATOR_BOOT_POLL_MS = 3_000;
+const EMULATOR_BOOT_TIMEOUT_MS = 120_000;
+const AUTO_SELECT_SETTLE_MS = 2_000;
 const DETECT_ATTEMPTS = 15;
 const DETECT_RETRY_MS = 2_000;
 
@@ -73,6 +76,14 @@ export class FlutterRunner {
   private runToken: string | null = null;
   private readonly listeners = new Set<() => void>();
   private detecting: Promise<void> | null = null;
+  /** `flutter daemon` terminal streaming device changes, while this task's picker watches. */
+  private daemonId: string | null = null;
+  private daemonLog: ReplicaLog | null = null;
+  private daemonLine = '';
+  private autoSelectTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Devices a restarted daemon has listed so far; the previous list stays on screen until it
+   * settles, then whatever it did not list (shut down meanwhile) is dropped. */
+  private relisted: Set<string> | null = null;
   /** Overlapping busy work (device refresh while an emulator boots) must not end `busy` early. */
   private busyCount = 0;
 
@@ -155,14 +166,112 @@ export class FlutterRunner {
     writePref(modeKey(this.projectId), mode);
   }
 
-  async refreshTargets(): Promise<void> {
-    const targets = await this.busy(async () => ({
-      devices: parseFlutterDevices(await this.exec(DEVICES_COMMAND)),
-      emulators: parseFlutterEmulators(await this.exec('flutter emulators')),
-    }));
-    runInAction(() => {
-      this.targets = targets;
+  /** Streams devices from `flutter daemon` (as VS Code does), so booting or shutting down a
+   * simulator shows up at once. One daemon app-wide (~150MB Dart process): watching from another
+   * task stops the previous one. A daemon left from before a renderer reload is replaced. */
+  async watchDevices(): Promise<void> {
+    if (
+      watchingTaskId === this.taskId &&
+      (!this.daemonId || this.terminals.terminals.has(this.daemonId))
+    )
+      return;
+    const previous = watchingTaskId === null ? undefined : runners.get(watchingTaskId);
+    watchingTaskId = this.taskId;
+    await previous?.unwatchDevices();
+    await when(() => this.terminals.isLoaded);
+    for (const terminal of [...this.terminals.terminals.values()]) {
+      if (terminal.data.name === DAEMON_TERMINAL)
+        await this.terminals.deleteTerminal(terminal.data.id);
+    }
+    const id = crypto.randomUUID();
+    await this.terminals.createTerminal({
+      id,
+      projectId: this.projectId,
+      taskId: this.taskId,
+      name: DAEMON_TERMINAL,
     });
+    const key = this.terminals.runtimeKeys.get(id);
+    if (!key) throw new Error('Flutter devices terminal did not start');
+    this.daemonId = id;
+    this.daemonLine = '';
+    this.daemonLog = new ReplicaLog((await getTerminalsClient()).output.handle(key), {
+      store: {
+        reset: (data) => this.onDaemonOutput(key, data.text, true),
+        append: (chunk) => this.onDaemonOutput(key, chunk, false),
+      },
+    });
+    await this.daemonLog.ready;
+    // `exec`: the daemon replaces the shell, so closing the tab or the daemon ends both.
+    await (await getTerminalsClient()).sendInput({ ...key, data: 'exec flutter daemon\r' });
+    if (watchingTaskId !== this.taskId) await this.unwatchDevices();
+  }
+
+  private async unwatchDevices(): Promise<void> {
+    void this.daemonLog?.dispose();
+    this.daemonLog = null;
+    const id = this.daemonId;
+    this.daemonId = null;
+    if (id) await this.terminals.deleteTerminal(id);
+  }
+
+  /** Only whole lines are parsed and only the unfinished one is kept, so the stream costs no
+   * buffer growth. */
+  private onDaemonOutput(key: TerminalRuntimeKey, chunk: string, reset: boolean): void {
+    const lines = ((reset ? '' : this.daemonLine) + stripAnsi(chunk)).split('\n');
+    this.daemonLine = lines.pop() ?? '';
+    for (const line of lines) {
+      const update = parseDaemonLine(line.trim());
+      if (update) this.applyDaemonUpdate(key, update);
+    }
+  }
+
+  private applyDaemonUpdate(key: TerminalRuntimeKey, update: DaemonUpdate): void {
+    if (update.kind === 'connected') {
+      this.relisted = new Set();
+      void getTerminalsClient()
+        .then((client) => client.sendInput({ ...key, data: DAEMON_START_REQUESTS }))
+        .catch((error: unknown) => log.warn('Starting Flutter device watch failed', { error }));
+      return;
+    }
+    const devices = this.targets?.devices ?? [];
+    const emulators = this.targets?.emulators ?? [];
+    runInAction(() => {
+      if (update.kind === 'emulators') {
+        this.targets = { devices, emulators: update.emulators };
+        return;
+      }
+      const others = devices.filter(
+        (d) => d.id !== (update.kind === 'added' ? update.device.id : update.id)
+      );
+      this.targets = {
+        devices: update.kind === 'added' ? [...others, update.device] : others,
+        emulators,
+      };
+    });
+    // Settle first: the daemon lists every open device at startup, and the remembered one may
+    // arrive after another phone that would otherwise be picked.
+    if (update.kind === 'added') this.relisted?.add(update.device.id);
+    clearTimeout(this.autoSelectTimer);
+    this.autoSelectTimer = setTimeout(() => this.autoSelect(), AUTO_SELECT_SETTLE_MS);
+  }
+
+  /** Follows the simulator the user opens or closes: when the remembered device is offline, the
+   * device that just came up (else any online phone) becomes the target. An online remembered
+   * device and a run in progress are never switched. */
+  private autoSelect(): void {
+    const relisted = this.relisted;
+    this.relisted = null;
+    if (relisted && this.targets) {
+      const { devices, emulators } = this.targets;
+      runInAction(() => {
+        this.targets = { devices: devices.filter((d) => relisted.has(d.id)), emulators };
+      });
+    }
+    if (this.onlineDevice || this.phase !== 'idle') return;
+    const isPhone = (d: FlutterDevice) => /^(ios|android)/.test(d.platform);
+    // Devices are appended as they come up, so the last phone is the newest.
+    const next = this.targets?.devices.filter(isPhone).at(-1);
+    if (next) void this.selectTarget({ kind: 'device', device: next });
   }
 
   /** Makes `target` the remembered device, booting an offline emulator first. */
@@ -204,7 +313,11 @@ export class FlutterRunner {
   }
 
   private async boot(emulator: FlutterEmulator): Promise<FlutterDevice> {
-    const before = new Set(parseFlutterDevices(await this.exec(DEVICES_COMMAND)).map((d) => d.id));
+    const before = new Set(this.targets?.devices.map((d) => d.id));
+    const booted = () =>
+      this.targets?.devices.find(
+        (d) => d.emulator && !before.has(d.id) && d.platform.startsWith(emulator.platform)
+      );
     // `flutter emulators --launch` on iOS runs `open -n` (forced new app instance) then `open`,
     // which opens a second simulator window when one is already up; plain `open -a` reuses it.
     await this.exec(
@@ -212,14 +325,11 @@ export class FlutterRunner {
         ? IOS_SIMULATOR_OPEN
         : `flutter emulators --launch ${quote(emulator.id)}`
     );
-    for (let attempt = 0; attempt < EMULATOR_BOOT_POLLS; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, EMULATOR_BOOT_POLL_MS));
-      const booted = parseFlutterDevices(await this.exec(DEVICES_COMMAND)).find(
-        (d) => d.emulator && !before.has(d.id) && d.platform.startsWith(emulator.platform)
-      );
-      if (booted) return booted;
-    }
-    throw new Error(`${emulator.name} did not boot in time`);
+    // The daemon reports the booted device; no polling.
+    await when(() => !!booted(), { timeout: EMULATOR_BOOT_TIMEOUT_MS }).catch(() => undefined);
+    const device = booted();
+    if (!device) throw new Error(`${emulator.name} did not boot in time`);
+    return device;
   }
 
   private async busy<T>(work: () => Promise<T>): Promise<T> {
@@ -326,6 +436,9 @@ export class FlutterRunner {
     await (await getTerminalsClient()).sendInput({ ...this.key, data });
   }
 }
+
+/** Task whose runner runs the one `flutter daemon`. */
+let watchingTaskId: string | null = null;
 
 // ponytail: one runner per task for the app's lifetime; dispose with the task if it ever matters.
 const runners = new Map<string, FlutterRunner>();
