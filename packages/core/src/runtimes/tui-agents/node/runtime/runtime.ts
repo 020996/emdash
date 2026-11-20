@@ -65,6 +65,7 @@ import {
 import { createSessionLifecycle } from '#services/session-lifecycle/node';
 import { TuiAgentStates } from './agent-state';
 import { spillLargePrompt, type PromptSpillResult } from './prompt-spill';
+import { cleanTerminalTitle, lastTerminalTitle } from './terminal-title';
 import type { TuiAgentsRuntimeDeps, TuiSessionConfig } from './types';
 
 const RESUME_FALLBACK_WINDOW_MS = 3_000;
@@ -610,8 +611,9 @@ export class TuiAgentsRuntime {
               session.output.reseed();
             }
           },
-          onData: () => {
+          onData: (chunk) => {
             this.lifecycle.recordOutput(config.input.conversationId);
+            this.recordTerminalTitle(config.input.conversationId, config.input.providerId, chunk);
           },
           onExit: (info) => {
             if (!this.isCurrentGeneration(config.input.conversationId, generation)) return;
@@ -903,6 +905,7 @@ export class TuiAgentsRuntime {
   private syncSessionState(state: TuiSessionState): void {
     const activity = this.lifecycle.activity(state.conversationId);
     const next: TuiSessionState = { ...state };
+    next.title ??= peek(this.sessionsList.states.list)[state.conversationId]?.title;
     if (activity.lastInputAt !== null) {
       next.lastInputAt = activity.lastInputAt;
     }
@@ -911,6 +914,16 @@ export class TuiAgentsRuntime {
     }
     produceCell(this.sessionsList.states.list, (draft) => {
       draft[state.conversationId] = next;
+    });
+  }
+
+  private recordTerminalTitle(conversationId: string, providerId: string, chunk: string): void {
+    const raw = lastTerminalTitle(chunk);
+    const title = raw === undefined ? undefined : cleanTerminalTitle(raw, providerId);
+    if (!title || peek(this.sessionsList.states.list)[conversationId]?.title === title) return;
+    produceCell(this.sessionsList.states.list, (draft) => {
+      const current = draft[conversationId];
+      if (current) current.title = title;
     });
   }
 

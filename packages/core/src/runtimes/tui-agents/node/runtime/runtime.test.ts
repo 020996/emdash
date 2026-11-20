@@ -295,6 +295,20 @@ describe('TuiAgentsRuntime', () => {
     await runtime.dispose();
   });
 
+  it('publishes the agent terminal title on the session and keeps it across output', async () => {
+    const { runtime, spawner } = createRuntime();
+    await runtime.startSession(startInput());
+    const session = () =>
+      peek(runtime.sessionsLiveModel.get(undefined)!.states.list)['conversation-1'];
+
+    spawner.processes[0]!.emitData('\x1b]0;✳ Kiểm thử phần mềm mới\x07');
+    expect(session()?.title).toBe('Kiểm thử phần mềm mới');
+
+    spawner.processes[0]!.emitData('plain output \x1b]0;✳ Claude Code\x07');
+    expect(session()?.title).toBe('Kiểm thử phần mềm mới');
+    await runtime.dispose();
+  });
+
   it('starts eagerly and output attachment does not spawn', async () => {
     const { runtime, spawner } = createRuntime();
 

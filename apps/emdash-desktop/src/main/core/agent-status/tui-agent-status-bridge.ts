@@ -25,6 +25,7 @@ type TuiAgentStatusBridgeDependencies = {
   runtimes: RuntimeBroker;
   onLocalWorkerStateChanged: WireWorker<TuiAgentsContract>['onStateChanged'];
   loadActiveConversationIds(host: HostRef): Promise<string[]>;
+  renameConversation?(conversationId: string, title: string): Promise<void>;
 };
 
 type TuiHostAttachment = {
@@ -118,7 +119,7 @@ export class TuiAgentStatusBridge {
         const bootstrap = firstSessions;
         firstSessions = false;
         sessionsChain = sessionsChain
-          .then(() => this.applySessions(attachment, sessions, { bootstrap }))
+          .then(() => this.applySessions(host, attachment, sessions, { bootstrap }))
           .catch((error) => {
             log.warn('TUI agent status bridge failed to apply sessions', {
               host: key,
@@ -182,6 +183,7 @@ export class TuiAgentStatusBridge {
   }
 
   private async applySessions(
+    host: HostRef,
     attachment: TuiHostAttachment,
     nextSessions: TuiSessionList,
     options: { bootstrap?: boolean } = {}
@@ -197,6 +199,10 @@ export class TuiAgentStatusBridge {
       if (!bootstrap && previous?.status !== 'exited' && session.status === 'exited') {
         await this.resetConversation(session.conversationId);
       }
+      // ponytail: local only; remote hosts keep their titles until a host-side writer exists.
+      if (host.type === 'local' && session.title && session.title !== previous?.title) {
+        this.applyTitle(session.conversationId, session.title);
+      }
       attachment.sessions.set(session.conversationId, session);
     }
 
@@ -205,6 +211,12 @@ export class TuiAgentStatusBridge {
       if (!bootstrap) await this.resetConversation(previous.conversationId);
       attachment.sessions.delete(conversationId);
     }
+  }
+
+  private applyTitle(conversationId: string, title: string): void {
+    void this.dependencies?.renameConversation?.(conversationId, title).catch((error) => {
+      log.warn('TUI session title apply failed', { conversationId, error: String(error) });
+    });
   }
 
   private async applyAgentStateSnapshot(state: TuiAgentState): Promise<void> {

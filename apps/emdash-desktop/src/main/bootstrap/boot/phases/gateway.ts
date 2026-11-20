@@ -57,6 +57,16 @@ export function installGateway(
     ),
     loadActiveConversationIds: (host) =>
       loadActiveAgentStatusConversationIds(database.db, host, 'pty'),
+    renameConversation: (conversationId, name) =>
+      renameConversation(
+        {
+          db: database.db,
+          runtimes: runtimes.broker,
+          hostIsReachable: services.hostIsReachable,
+        },
+        conversationId,
+        name
+      ),
   });
   appScope.add(services.hostAttachments.register(devServerBridgeParticipant));
   appScope.add(
