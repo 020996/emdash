@@ -86,6 +86,19 @@ describe('SearchService entity index updates', () => {
       .all(kind, id);
   }
 
+  it('lists only live conversations as recents', async () => {
+    fixture.sqlite.exec(`
+      INSERT INTO projects (id, name) VALUES ('project-1', 'Project');
+      INSERT INTO tasks (id, project_id, name, status) VALUES ('task-1', 'project-1', 'Task', 'in_progress');
+      INSERT INTO conversations (id, project_id, task_id, title) VALUES
+        ('live', 'project-1', 'task-1', 'Live chat'),
+        ('removed', 'project-1', 'task-1', 'Removed chat');
+      UPDATE conversations SET untracked_at = '2026-01-01T00:00:00.000Z' WHERE id = 'removed';
+    `);
+
+    expect((await search('conversation', '')).map((item) => item.id)).toEqual(['live']);
+  });
+
   it('replaces conversation titles after repeated renames and removes the entity on deletion', async () => {
     conversationEvents._emit('conversation:created', conversation);
     await expect(search('conversation', 'Triage')).resolves.toHaveLength(1);

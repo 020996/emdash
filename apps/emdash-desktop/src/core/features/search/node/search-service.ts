@@ -14,7 +14,10 @@ import { type JobError, type JobInput, type JobProgress, type JobResult } from '
 import type Database from 'better-sqlite3';
 import { and, eq, isNull } from 'drizzle-orm';
 import { conversationEvents } from '@core/features/conversations/api/node/conversation-events';
-import { conversationRegistryTable as conversations } from '@core/features/conversations/api/node/registry';
+import {
+  conversationRegistryTable as conversations,
+  liveConversations,
+} from '@core/features/conversations/api/node/registry';
 import { projectEvents } from '@core/features/projects/api/node/project-events';
 import type { TaskService } from '@core/features/tasks/api/node/task-service';
 import {
@@ -302,7 +305,7 @@ export class SearchService {
         .prepare(
           `SELECT c.id, c.title, c.project_id, c.task_id
            FROM conversations c
-           WHERE c.task_id = ?
+           WHERE c.task_id = ? AND c.untracked_at IS NULL
            ORDER BY c.last_session_activity_at DESC
            LIMIT 10`
         )
@@ -470,7 +473,11 @@ export class SearchService {
         .leftJoin(workspaces, eq(workspaces.id, projects.repositoryWorkspaceId))
         .where(isNull(projects.deletedAt))
         .all();
-      const allConversations = this.deps.db.select().from(conversations).all();
+      const allConversations = this.deps.db
+        .select()
+        .from(conversations)
+        .where(liveConversations())
+        .all();
 
       const upsertStmt = this.deps.sqlite.prepare(
         `INSERT INTO search_index(item_type, item_id, project_id, task_id, title, keywords)

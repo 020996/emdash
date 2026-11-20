@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { Disposable } from '@emdash/shared/concurrency';
 import parcelWatcher from '@parcel/watcher';
 import type { WatchEvent } from '#services/fs-watch/api';
@@ -6,17 +7,20 @@ import type { WatchEvent } from '#services/fs-watch/api';
 const RESUBSCRIBE_DELAY_MS = 250;
 const MAX_RESUBSCRIBE_DELAY_MS = 30_000;
 const RESYNC_DELAY_MS = 250;
+// A build drops FSEvents for minutes; one rescan after the storm beats one every 250 ms.
+const DROP_RESYNC_QUIET_MS = 2_000;
+const DROP_RESYNC_MAX_WAIT_MS = 10_000;
 
 export type ParcelSubscribeFn = typeof parcelWatcher.subscribe;
 
 /**
- * One native subscription per (root, ignore set), shared across consumers.
+ * One native subscription per (root, ignore set, backend), shared across consumers.
  * Owns event-gap recovery and serialized resubscribe-with-retry; signals resync whenever events
  * may have been lost.
  */
 export class NativeWatch implements Disposable {
   readonly root: string;
-  readonly ignore: string[];
+  private readonly options: parcelWatcher.Options;
   private readonly deliver: (events: WatchEvent[]) => void;
   private readonly resync: () => void;
   private readonly onError: (context: string, error: unknown) => void;
@@ -24,6 +28,7 @@ export class NativeWatch implements Disposable {
   private subscription: Promise<parcelWatcher.AsyncSubscription> | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private resyncTimer: ReturnType<typeof setTimeout> | null = null;
+  private dropStormTimer: ReturnType<typeof setTimeout> | null = null;
   private restartPromise: Promise<void> | null = null;
   private generation = 0;
   private activeGeneration = 0;
@@ -33,14 +38,14 @@ export class NativeWatch implements Disposable {
 
   constructor(
     root: string,
-    ignore: string[],
+    options: parcelWatcher.Options,
     deliver: (events: WatchEvent[]) => void,
     resync: () => void,
     onError: (context: string, error: unknown) => void,
     subscribeFn: ParcelSubscribeFn = parcelWatcher.subscribe
   ) {
     this.root = root;
-    this.ignore = ignore;
+    this.options = options;
     this.deliver = deliver;
     this.resync = resync;
     this.onError = onError;
@@ -63,6 +68,8 @@ export class NativeWatch implements Disposable {
     this.retryTimer = null;
     if (this.resyncTimer) clearTimeout(this.resyncTimer);
     this.resyncTimer = null;
+    if (this.dropStormTimer) clearTimeout(this.dropStormTimer);
+    this.dropStormTimer = null;
     await this.restartPromise;
     const subscription = await this.subscription?.catch(() => null);
     this.subscription = null;
@@ -75,6 +82,7 @@ export class NativeWatch implements Disposable {
 
   private async subscribe(): Promise<parcelWatcher.AsyncSubscription> {
     await fs.stat(this.root);
+    const nested = await nestedRepositories(this.root);
     if (this.disposed) throw new Error(`Watcher was disposed before subscribing for ${this.root}`);
     const generation = ++this.generation;
     this.activeGeneration = generation;
@@ -85,7 +93,7 @@ export class NativeWatch implements Disposable {
         if (err) {
           this.reportError(`watch ${this.root}`, err);
           if (requiresResync(err)) {
-            this.scheduleResync();
+            this.scheduleDropResync();
             return;
           }
           if (this.restartPromise) {
@@ -98,8 +106,25 @@ export class NativeWatch implements Disposable {
         if (events.length === 0) return;
         this.deliver(events.map(toWatchEvent));
       },
-      { ignore: this.ignore }
+      nested.length
+        ? { ...this.options, ignore: [...(this.options.ignore ?? []), ...nested] }
+        : this.options
     );
+  }
+
+  /** Waits for a quiet gap (capped) so a storm of dropped-event errors costs one resync. */
+  private scheduleDropResync(): void {
+    if (this.disposed) return;
+    const fire = () => {
+      if (this.resyncTimer) clearTimeout(this.resyncTimer);
+      if (this.dropStormTimer) clearTimeout(this.dropStormTimer);
+      this.resyncTimer = null;
+      this.dropStormTimer = null;
+      this.signalResync();
+    };
+    if (this.resyncTimer) clearTimeout(this.resyncTimer);
+    this.resyncTimer = setTimeout(fire, DROP_RESYNC_QUIET_MS);
+    this.dropStormTimer ??= setTimeout(fire, DROP_RESYNC_MAX_WAIT_MS);
   }
 
   private scheduleResync(): void {
@@ -201,4 +226,37 @@ function toWatchEvent(event: parcelWatcher.Event): WatchEvent {
     kind: event.type,
     path: event.path,
   };
+}
+
+/**
+ * Git repositories nested (two levels deep) under a root that is not itself a repository. A plain
+ * folder of repos skips them: each repo's own workspace watches it, and their builds would
+ * otherwise flood this root's FSEvents stream.
+ */
+async function nestedRepositories(root: string): Promise<string[]> {
+  if (await exists(path.join(root, '.git'))) return [];
+  const found: string[] = [];
+  const visit = async (relative: string, depth: number): Promise<void> => {
+    const entries = await fs
+      .readdir(path.join(root, relative), { withFileTypes: true })
+      .catch(() => []);
+    await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules')
+        .map(async (entry) => {
+          const child = relative ? path.join(relative, entry.name) : entry.name;
+          if (await exists(path.join(root, child, '.git'))) found.push(child);
+          else if (depth < 2) await visit(child, depth + 1);
+        })
+    );
+  };
+  await visit('', 1);
+  return found;
+}
+
+function exists(file: string): Promise<boolean> {
+  return fs.access(file).then(
+    () => true,
+    () => false
+  );
 }

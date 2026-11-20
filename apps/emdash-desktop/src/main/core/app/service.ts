@@ -643,13 +643,20 @@ class AppService implements Disposable {
 
     if (!command) throw new Error('Unsupported platform or app');
 
-    // File targets (e.g. a .ipa for Transporter) can't be a cwd: spawn fails with ENOTDIR.
-    const cwd = (await stat(target)).isDirectory() ? target : dirname(target);
+    // File targets (e.g. an .ipa for Transporter) cannot be a cwd; use their folder.
+    const isDirectory = await stat(target).then(
+      (s) => s.isDirectory(),
+      () => true
+    );
     await new Promise<void>((resolve, reject) => {
-      exec(command, { cwd, env: buildExternalToolEnv() }, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
+      exec(
+        command,
+        { cwd: isDirectory ? target : dirname(target), env: buildExternalToolEnv() },
+        (err) => {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
     });
   }
 

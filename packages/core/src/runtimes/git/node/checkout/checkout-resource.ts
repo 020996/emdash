@@ -81,7 +81,7 @@ export class CheckoutResource {
     };
     this.fileContents = new GitFileContentRegistry({
       commands: this.commands,
-      execute: (run) => this.repository.execute(run),
+      execute: (run, signal) => this.repository.readContent(signal, run),
       maxEntries: options.maxFileContentStates,
       onError: this.onError,
     });
@@ -327,8 +327,11 @@ export class CheckoutResource {
     return handle;
   }
 
-  private onWorktreeEvents(_events: { path: string }[]): void {
-    this.invalidate('status');
+  /** Batches touching only gitignored paths cannot change status, so they skip the refresh. */
+  private onWorktreeEvents(events: { path: string }[]): void {
+    void this.commands.allIgnored(events.map((event) => event.path)).then((ignored) => {
+      if (!ignored && !this.disposed) this.invalidate('status');
+    });
   }
 
   private onWorktreeResync(): void {

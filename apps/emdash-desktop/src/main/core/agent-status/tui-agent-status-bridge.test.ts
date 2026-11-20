@@ -4,7 +4,11 @@ import {
   LOCAL_HOST_REF,
   type HostRef,
 } from '@emdash/core/primitives/host/api';
-import { tuiAgentsContract, type TuiAgentState } from '@emdash/core/runtimes/tui-agents/api';
+import {
+  tuiAgentsContract,
+  type TuiAgentState,
+  type TuiSessionState,
+} from '@emdash/core/runtimes/tui-agents/api';
 import {
   createTuiAgentStatesLiveModel,
   createTuiSessionsLiveModel,
@@ -26,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   cacheSignal: vi.fn(async () => {}),
   loadActiveIds: vi.fn(async (_host: HostRef) => [] as string[]),
   resetToIdle: vi.fn(async () => {}),
+  renameConversation: vi.fn(async (_conversationId: string, _title: string) => {}),
 }));
 
 vi.mock('./agent-status-service', () => ({
@@ -107,6 +112,37 @@ describe('TuiAgentStatusBridge', () => {
     expect(fixture.client).toHaveBeenLastCalledWith(LOCAL_HOST_REF);
     await fixture.dispose();
   });
+
+  it('renames local conversations when the agent terminal title changes', async () => {
+    const remote = hostRef('remote', 'ssh-1');
+    const localRuntime = createRuntime({});
+    const remoteRuntime = createRuntime({});
+    const fixture = createBridge(
+      new Map([
+        [formatHostRef(LOCAL_HOST_REF), localRuntime],
+        [formatHostRef(remote), remoteRuntime],
+      ])
+    );
+    mocks.loadActiveIds.mockResolvedValue([]);
+    await Promise.all([
+      fixture.bridge.attachHost(LOCAL_HOST_REF),
+      fixture.bridge.attachHost(remote),
+    ]);
+
+    localRuntime.sessions.model.states.list.set({ local: session('local', 'Fix login bug') });
+    remoteRuntime.sessions.model.states.list.set({ remote: session('remote', 'Remote work') });
+    await vi.waitFor(() =>
+      expect(mocks.renameConversation).toHaveBeenCalledWith('local', 'Fix login bug')
+    );
+
+    localRuntime.sessions.model.states.list.set({ local: session('local', 'Fix login bug') });
+    localRuntime.sessions.model.states.list.set({ local: session('local', 'Add login tests') });
+    await vi.waitFor(() =>
+      expect(mocks.renameConversation).toHaveBeenCalledWith('local', 'Add login tests')
+    );
+    expect(mocks.renameConversation).toHaveBeenCalledTimes(2);
+    await fixture.dispose();
+  });
 });
 
 function createBridge(runtimes: Map<string, ReturnType<typeof createRuntime>>) {
@@ -126,6 +162,7 @@ function createBridge(runtimes: Map<string, ReturnType<typeof createRuntime>>) {
       };
     },
     loadActiveConversationIds: mocks.loadActiveIds,
+    renameConversation: mocks.renameConversation,
   });
   return {
     bridge,
@@ -153,5 +190,19 @@ function state(conversationId: string, status: TuiAgentState['status']): TuiAgen
     status,
     notificationType: status === 'awaiting-input' ? 'permission_prompt' : undefined,
     updatedAt: 1,
+  };
+}
+
+function session(conversationId: string, title: string): TuiSessionState {
+  return {
+    conversationId,
+    providerId: 'claude',
+    sessionId: null,
+    status: 'running',
+    cols: 120,
+    rows: 30,
+    title,
+    resume: null,
+    startedAt: 1,
   };
 }

@@ -166,6 +166,11 @@ export class FlutterRunner {
     writePref(modeKey(this.projectId), mode);
   }
 
+  /** While `flutter run` owns the shell, typed commands would become its key commands. */
+  get runActive(): boolean {
+    return this.state === 'starting' || this.state === 'running';
+  }
+
   /** Streams devices from `flutter daemon` (as VS Code does), so booting or shutting down a
    * simulator shows up at once. One daemon app-wide (~150MB Dart process): watching from another
    * task stops the previous one. A daemon left from before a renderer reload is replaced. */
@@ -276,6 +281,8 @@ export class FlutterRunner {
 
   /** Makes `target` the remembered device, booting an offline emulator first. */
   async selectTarget(target: FlutterRunTarget): Promise<LastDevice> {
+    if (target.kind === 'emulator' && this.runActive)
+      throw new Error('Stop the app to boot an emulator');
     const device =
       target.kind === 'device' ? target.device : await this.busy(() => this.boot(target.emulator));
     const lastDevice = { id: device.id, name: device.name };
@@ -349,18 +356,31 @@ export class FlutterRunner {
   /** Types `command` into the Flutter terminal and resolves with its output. */
   private async exec(command: string): Promise<string> {
     await this.ensureTerminal();
+    const terminalId = this.terminalId;
     const token = newToken();
-    const done = new Promise<string>((resolve) => {
-      const check = () => {
+    let check = () => {};
+    let stopWatch = () => {};
+    // No time limit: a first `flutter` run may download its SDK. Only a closed terminal, where the
+    // end marker can never print, ends the wait.
+    const done = new Promise<string>((resolve, reject) => {
+      check = () => {
         const out = sliceBetweenMarkers(this.output, token);
-        if (out === null) return;
-        this.listeners.delete(check);
-        resolve(out);
+        if (out !== null) resolve(out);
       };
       this.listeners.add(check);
+      stopWatch = when(
+        () => !terminalId || !this.terminals.terminals.has(terminalId),
+        () => reject(new Error('Flutter terminal closed'))
+      );
     });
-    await this.send(`${markerCommand('B', token)}; ${command}; ${markerCommand('E', token)}\r`);
-    return done;
+    void done.catch(() => undefined); // a failed send leaves the close rejection unobserved
+    try {
+      await this.send(`${markerCommand('B', token)}; ${command}; ${markerCommand('E', token)}\r`);
+      return await done;
+    } finally {
+      this.listeners.delete(check);
+      stopWatch();
+    }
   }
 
   private async ensureTerminal(): Promise<void> {
