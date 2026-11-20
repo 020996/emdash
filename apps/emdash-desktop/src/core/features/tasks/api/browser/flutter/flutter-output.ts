@@ -34,35 +34,46 @@ export function openRunToken(output: string): string | null {
   return after.includes(markerText('X', last[1])) || after.includes('^C') ? null : last[1];
 }
 
-export function parseFlutterDevices(output: string): FlutterDevice[] {
-  const start = output.indexOf('[');
-  const end = output.lastIndexOf(']');
-  if (start === -1 || end <= start) return [];
-  try {
-    const raw = JSON.parse(output.slice(start, end + 1)) as Array<{
-      id?: string;
-      name?: string;
-      targetPlatform?: string;
-      emulator?: boolean;
-      isSupported?: boolean;
-    }>;
-    return raw
-      .filter((d) => d.id && d.name && d.isSupported !== false)
-      .map((d) => ({
-        id: d.id!,
-        name: d.name!,
-        platform: d.targetPlatform ?? '',
-        emulator: d.emulator === true,
-      }));
-  } catch {
-    return [];
-  }
-}
+type DaemonDevice = {
+  id: string;
+  name: string;
+  platform: string;
+  emulator: boolean;
+  connectionInterface?: string;
+};
 
-export function parseFlutterEmulators(output: string): FlutterEmulator[] {
-  return output.split('\n').flatMap((line) => {
-    const cols = line.split('•').map((col) => col.trim());
-    if (cols.length < 4 || !cols[0] || cols[0] === 'Id') return [];
-    return [{ id: cols[0], name: cols[1], platform: cols[3] }];
-  });
+/** One `flutter daemon` stdout line (`[{...}]`) as the change it makes to the device list. Other
+ * lines (echoed input, log messages, responses to other requests) give null. */
+export type DaemonUpdate =
+  | { kind: 'connected' }
+  | { kind: 'added'; device: FlutterDevice }
+  | { kind: 'removed'; id: string }
+  | { kind: 'emulators'; emulators: FlutterEmulator[] };
+
+export const DAEMON_EMULATORS_REQUEST_ID = 2;
+
+export function parseDaemonLine(line: string): DaemonUpdate | null {
+  if (!line.startsWith('[{')) return null;
+  let message: { event?: string; params?: DaemonDevice; id?: number; result?: unknown };
+  try {
+    [message] = JSON.parse(line) as [typeof message];
+  } catch {
+    return null;
+  }
+  if (message.event === 'daemon.connected') return { kind: 'connected' };
+  const device = message.params;
+  if (message.event === 'device.removed' && device) return { kind: 'removed', id: device.id };
+  // ponytail: attached only (simulators, emulators, cabled phones), like the old device list.
+  if (message.event === 'device.added' && device && device.connectionInterface !== 'wireless') {
+    const { id, name, platform, emulator } = device;
+    return { kind: 'added', device: { id, name, platform, emulator } };
+  }
+  if (message.id === DAEMON_EMULATORS_REQUEST_ID && Array.isArray(message.result)) {
+    const raw = message.result as Array<{ id: string; name: string; platformType: string }>;
+    return {
+      kind: 'emulators',
+      emulators: raw.map((e) => ({ id: e.id, name: e.name, platform: e.platformType })),
+    };
+  }
+  return null;
 }

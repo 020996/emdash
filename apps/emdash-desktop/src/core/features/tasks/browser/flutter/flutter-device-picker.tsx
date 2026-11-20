@@ -28,10 +28,10 @@ export const FlutterDevicePicker = observer(function FlutterDevicePicker() {
   );
 
   useEffect(() => {
-    // Device list loads up front so the chip only names a device that is online.
+    // Devices stream in up front so the chip only names a device that is online.
     runner
       .detectFlutter()
-      .then(() => (runner.isFlutter && !runner.targets ? runner.refreshTargets() : undefined))
+      .then(() => (runner.isFlutter ? runner.watchDevices() : undefined))
       .catch((error) => log.warn('Flutter detection failed', { error }));
   }, [runner]);
 
@@ -42,7 +42,8 @@ export const FlutterDevicePicker = observer(function FlutterDevicePicker() {
   };
   const onOpenChange = (open: boolean) => {
     if (!open) return;
-    runner.refreshTargets().catch((error) => log.warn('Listing Flutter devices failed', { error }));
+    // Restarts the daemon if its tab was closed.
+    runner.watchDevices().catch((error) => log.warn('Listing Flutter devices failed', { error }));
   };
   const targets = runner.targets;
   const current = runner.onlineDevice;

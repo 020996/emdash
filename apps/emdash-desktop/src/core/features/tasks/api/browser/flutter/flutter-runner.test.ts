@@ -25,7 +25,6 @@ function runnerWithTerminal() {
 it('types nothing into the shell while flutter run owns it', async () => {
   const { runner } = runnerWithTerminal();
   runInAction(() => (runner.phase = 'running'));
-  await runner.refreshTargets();
   await expect(
     runner.selectTarget({
       kind: 'emulator',
@@ -37,7 +36,8 @@ it('types nothing into the shell while flutter run owns it', async () => {
 
 it('ends a pending command when the Flutter terminal closes', async () => {
   const { runner, terminals } = runnerWithTerminal();
-  const refresh = runner.refreshTargets();
+  const emulator = { id: 'e', name: 'E', platform: 'android' } as const;
+  const refresh = runner.selectTarget({ kind: 'emulator', emulator });
   await vi.waitFor(() => expect(sendInput).toHaveBeenCalled());
   expect(runner.phase).toBe('busy');
   runInAction(() => terminals.delete('flutter'));

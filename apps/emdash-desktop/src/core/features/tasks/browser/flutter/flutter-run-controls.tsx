@@ -68,16 +68,14 @@ export const FlutterRunControls = observer(function FlutterRunControls() {
       label={device ? `Run on ${device.name}` : 'No device'}
       disabled={state === 'busy'}
       onClick={() => {
-        // Re-list first: the device may have shut down since the list was loaded.
+        // The device list is live (flutter daemon), so no re-list before running.
+        if (!device) {
+          toast.error('No device');
+          return;
+        }
         void runner
-          .refreshTargets()
-          .then(async () => {
-            const online = runner.onlineDevice;
-            if (!online) {
-              toast.error('No device');
-              return;
-            }
-            await runner.run({ kind: 'device', device: online });
+          .run({ kind: 'device', device })
+          .then(() => {
             if (runner.terminalId) taskView.revealTerminal(runner.terminalId);
           })
           .catch((error) => log.warn('Flutter run failed', { error }));

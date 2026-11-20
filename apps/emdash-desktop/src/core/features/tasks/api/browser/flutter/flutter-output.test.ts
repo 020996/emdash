@@ -3,10 +3,8 @@ import {
   markerCommand,
   markerText,
   openRunToken,
-  parseFlutterDevices,
-  parseFlutterEmulators,
+  parseDaemonLine,
   sliceBetweenMarkers,
-  stripAnsi,
 } from './flutter-output';
 
 describe('flutter output parsing', () => {
@@ -17,25 +15,39 @@ describe('flutter output parsing', () => {
     expect(sliceBetweenMarkers(echoed, 't1')).toBeNull();
   });
 
-  it('parses supported devices and offline emulators', () => {
-    const devices = parseFlutterDevices(
-      stripAnsi(
-        '\x1b[0mWaiting...\r\n[{"name":"iPhone 17","id":"ABC","isSupported":true,' +
-          '"targetPlatform":"ios","emulator":true},' +
-          '{"name":"Old","id":"X","isSupported":false,"targetPlatform":"ios","emulator":false}]'
+  it('maps flutter daemon lines to device list changes', () => {
+    expect(parseDaemonLine('[{"event":"daemon.connected","params":{"version":"0.6.1"}}]')).toEqual({
+      kind: 'connected',
+    });
+    expect(
+      parseDaemonLine(
+        '[{"event":"device.added","params":{"id":"ABC","name":"iPhone 17","platform":"ios",' +
+          '"emulator":true,"connectionInterface":"attached"}}]'
       )
-    );
-    expect(devices).toEqual([{ id: 'ABC', name: 'iPhone 17', platform: 'ios', emulator: true }]);
-
-    const emulators = parseFlutterEmulators(
-      [
-        '2 available emulators:',
-        'Id                  • Name          • Manufacturer • Platform',
-        'apple_ios_simulator • iOS Simulator • Apple        • ios',
-        'Pixel_6_Pro         • Pixel 6 Pro   • Google       • android',
-      ].join('\n')
-    );
-    expect(emulators.map((e) => e.id)).toEqual(['apple_ios_simulator', 'Pixel_6_Pro']);
+    ).toEqual({
+      kind: 'added',
+      device: { id: 'ABC', name: 'iPhone 17', platform: 'ios', emulator: true },
+    });
+    expect(
+      parseDaemonLine(
+        '[{"event":"device.added","params":{"id":"W","name":"Phone","platform":"ios",' +
+          '"emulator":false,"connectionInterface":"wireless"}}]'
+      )
+    ).toBeNull();
+    expect(parseDaemonLine('[{"event":"device.removed","params":{"id":"ABC"}}]')).toEqual({
+      kind: 'removed',
+      id: 'ABC',
+    });
+    expect(
+      parseDaemonLine(
+        '[{"id":2,"result":[{"id":"Pixel_6_Pro","name":"Pixel 6 Pro","platformType":"android"}]}]'
+      )
+    ).toEqual({
+      kind: 'emulators',
+      emulators: [{ id: 'Pixel_6_Pro', name: 'Pixel 6 Pro', platform: 'android' }],
+    });
+    expect(parseDaemonLine('[{"id":1,"method":"device.enable"}]')).toBeNull();
+    expect(parseDaemonLine('% flutter daemon')).toBeNull();
   });
 
   it('finds the run still in progress in a replayed log', () => {
